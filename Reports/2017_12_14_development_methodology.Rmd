@@ -1,0 +1,532 @@
+---
+title: "Development of a methodolygy to quantify compounds with Seal AA3"
+date: "14 & 15 december 2017"
+author: "Antoine Batigny & Guyliann Engels"
+
+output: 
+  html_notebook: 
+    highlight: pygments
+    theme: readable
+    toc: yes
+---
+
+
+
+# Aim 
+
+* We use Stareso sea water to prepare calibration line because we think that the SSW is contaminated
+
+
+# Introduction
+
+we use the Seal AA3 to compare several water's solutions (fresh water and sea water) with the addition of nitrogen and phosphorus compounds. 
+
+
+
+
+We analyse :
+
+
+- The Stareso sea water.
+
+
+This water is aged with several cycles (light/ dark cycles). The organisms in water will use all available nutrients. this sea water is logically clean.
+
+- The ultrapure water ( type 1, Millipore Corporation)
+
+
+This water is described as ultrapure water (Type1). attention, the salinity is different between sample. a fresh water and sea water are not comparable.
+
+- The Synthetic sea Water (SSW)
+
+
+- The Stareso sea water with addition of 0.05, 0.1, 0.2, 1, 2, 5 and 10 $\mu mol/L$ for $PO_4$, $NO_3$ and $NH_4$ (method A). The Stareso sea water with addition of 0.05, 1, 30 $\mu mol/L$ for $Ptot$ and $Ntot$ (method B). The Stareso sea water with addition of 0.05, 1, 10 $\mu mol/L$ for $NO_2$. (method B)
+
+
+# M&M
+
+- Calibration lines are realised with Stareso sea water
+
+- Solvant for seal AA3 are realsied with Stareso sea water
+
+- each sample is measured 10 times (except calibration line)
+
+
+# Results
+
+```{r}
+library(tidyverse)#version 1.1.1
+library(ggpubr)#version0.1.6
+library(gridExtra)#version 2.2.1
+library(knitr)#version 1.17
+
+data <- read.table(file = "../data/171215A.txt", sep = ";", header = TRUE) # import dataset
+
+# check the method, line 8 , two possibility : method A (PO4, NO3, NH4) or method B (Ptot, Ntot, NO2)
+
+# skip first line
+meth_a <- data[ -c(1:13), ]
+remove(data)
+# rename variable for more simplicity
+meth_a %>%rename(echant = ANAL, type  = X.1, date_analyse = X.5, 
+                PO4_theo = X.6, PO4_conc = X.7, PO4_val = X.8,  
+                NO3_theo = X.9, NO3_conc = X.10, NO3_val = X.11,
+                NH4_theo = X.12, NH4_conc = X.13, NH4_val = X.14)%>%
+  select(c(1,4,8:17))-> meth_a
+
+# special attention for the type of variables and change if necessary
+meth_a %>% mutate(echant = as.character(echant),
+                  type = as.character(type),
+                  PO4_theo = as.numeric(as.character(PO4_theo)),
+                  PO4_conc = as.numeric(as.character(PO4_conc)),
+                  PO4_val = as.numeric(as.character(PO4_val)),
+                  NO3_theo = as.numeric(as.character(NO3_theo)),
+                  NO3_conc = as.numeric(as.character(NO3_conc)),
+                  NO3_val = as.numeric(as.character(NO3_val)),
+                  NH4_theo = as.numeric(as.character(NH4_theo)),
+                  NH4_conc = as.numeric(as.character(NH4_conc)),
+                  NH4_val = as.numeric(as.character(NH4_val))) -> meth_a
+
+meth_a$date_analyse <- as.POSIXlt(meth_a$date_analyse, format = "%d/%m/%Y %H:%M:%S")
+meth_a$date_analyse <- as.POSIXct(meth_a$date_analyse)
+
+
+
+# Import second dataset and check method
+
+meth<- read.table(file = "../data/171214A.txt", sep = ";", header = TRUE) 
+
+# check the method, line 8 , two possibility : method A (PO4, NO3, NH4) or method B (Ptot, Ntot, NO2)
+
+## If METHOD B
+
+# skip first line
+meth_b <- meth[ -c(1:13), ]
+remove(meth)
+# rename variable for more simplicity
+
+meth_b %>%rename(echant = ANAL, type  = X.1, date_analyse = X.5, 
+                Ptot_theo = X.6, Ptot_conc = X.7, Ptot_val = X.8,  
+                Ntot_theo = X.9, Ntot_conc = X.10, Ntot_val = X.11,
+                NO2_theo = X.12, NO2_conc = X.13, NO2_val = X.14)%>%
+  select(c(1,4,8:17))-> meth_b
+
+# special attention for the type of variables and change if necessary
+meth_b %>% mutate(echant = as.character(echant),
+                  type = as.character(type),
+                  Ptot_theo = as.numeric(as.character(Ptot_theo)),
+                  Ptot_conc = as.numeric(as.character(Ptot_conc)),
+                  Ptot_val = as.numeric(as.character(Ptot_val)),
+                  Ntot_theo = as.numeric(as.character(Ntot_theo)),
+                  Ntot_conc = as.numeric(as.character(Ntot_conc)),
+                  Ntot_val = as.numeric(as.character(Ntot_val)),
+                  NO2_theo = as.numeric(as.character(NO2_theo)),
+                  NO2_conc = as.numeric(as.character(NO2_conc)),
+                  NO2_val = as.numeric(as.character(NO2_val))) -> meth_b
+
+meth_b$date_analyse <- as.POSIXlt(meth_b$date_analyse, format = "%d/%m/%Y %H:%M:%S")
+meth_b$date_analyse <- as.POSIXct(meth_b$date_analyse)
+```
+
+## Calibration curves
+
+```{r}
+# select CALB to check a good calibration line
+meth_a%>%filter(type == "CALB") -> calb_a
+# If ok next step, otherwise compute a new variable with best calibration line between theorical values and obtained values
+
+#PO4
+PO4_graph <- ggplot(data = calb_a, mapping = aes(x = PO4_theo, y = PO4_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "PO4") +
+  theme(plot.caption = element_text(hjust = 0.5)) +
+  theme_bw()
+# simply graph to visualize the calibration line for PO4
+
+# Compute linear regression and extract r^2^ for PO4
+PO4_reg <-lm(PO4_val ~ PO4_theo, data =  calb_a)
+
+summary((PO4_reg))$coefficients -> PO4_tab
+PO4_tab <- as.data.frame(PO4_tab)
+
+round(summary((PO4_reg))$r.squared, 4) -> r_squared
+PO4_tab$r_squared <- c(r_squared, " ")
+
+# Same procedure for all elements
+#NO3
+
+NO3_graph <- ggplot(data = calb_a, mapping = aes(x = NO3_theo, y = NO3_val))+
+  geom_point()+
+  geom_smooth(method = "lm")+ 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "NO3")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+NO3_reg <-lm(NO3_val ~ NO3_theo, data =  calb_a)
+
+summary((NO3_reg))$coefficients -> NO3_tab
+NO3_tab <- as.data.frame(NO3_tab)
+
+round(summary((NO3_reg))$r.squared, 4) -> r_squared
+NO3_tab$r_squared <- c(r_squared, " ")
+
+#NH4
+
+NH4_graph <- ggplot(data = calb_a, mapping = aes(x = NH4_theo, y = NH4_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "NH4")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+
+NH4_reg <-lm(NH4_val ~ NH4_theo, data =  calb_a)
+
+summary((NH4_reg))$coefficients -> NH4_tab
+NH4_tab <- as.data.frame(NH4_tab)
+
+round(summary((NH4_reg))$r.squared, 4) -> r_squared
+NH4_tab$r_squared <- c(r_squared, " ")
+
+
+calb_tab <- bind_rows( PO4_tab, NO3_tab, NH4_tab)
+calb_tab_a <- data_frame(coef= c( "I", "Val",  "I", "Val",  "I", "Val"))
+calb_tab <- bind_cols(calb_tab_a, calb_tab)
+
+## Template for tab 
+mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params=list(cex = 0.6)),
+    colhead = list(fg_params=list(cex = 0.7)),
+    rowhead = list(fg_params=list(cex = 0.7)))
+## Create tab with lm's coefficients 
+tab <- tableGrob(calb_tab[ , - c(4)], theme = mytheme, rows = c("PO4", " ", "NO3", " ", "NH4", ""))
+
+#multiplot
+ggarrange(PO4_graph, NO3_graph, NH4_graph, tab)
+
+remove(calb_tab, calb_tab_a, mytheme, NH4_graph, NH4_reg, NH4_tab, NO3_graph, NO3_reg, NO3_tab, PO4_graph, PO4_reg, PO4_tab, tab)
+```
+
+The r^2^ of calibration line are close  to 1. 
+
+```{r}
+
+# select CALB to check a good calibration line
+meth_b%>%filter(type == "CALB") -> calb_b
+
+
+#Ptot
+Ptot_graph <- ggplot(data = calb_b[c(1:8), ], mapping = aes(x = Ptot_theo, y = Ptot_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + labs( x = "Theoretical concentrations", y = "Values", caption = "Ptot")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+Ptot_reg <-lm(Ptot_val ~ Ptot_theo, data =  calb_b[c(1:8), ])
+
+summary((Ptot_reg))$coefficients -> Ptot_tab
+Ptot_tab <- as.data.frame(Ptot_tab)
+
+round(summary((Ptot_reg))$r.squared, 4) -> r_squared
+Ptot_tab$r_squared <- c(r_squared, " ")
+
+#Ntot
+Ntot_graph <- ggplot(data = calb_b[c(1:8), ], mapping = aes(x = Ntot_theo, y = Ntot_val))+
+  geom_point()+
+  geom_smooth(method = "lm")+ 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "Ntot")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+Ntot_reg <-lm(Ntot_val ~ Ntot_theo, data =  calb_b[c(1:8), ])
+
+summary((Ntot_reg))$coefficients -> Ntot_tab
+Ntot_tab <- as.data.frame(Ntot_tab)
+
+round(summary((Ntot_reg))$r.squared, 4) -> r_squared
+Ntot_tab$r_squared <- c(r_squared, " ")
+
+#NO2
+
+NO2_graph <- ggplot(data = calb_b[c(9:17), ], mapping = aes(x = NO2_theo, y = NO2_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "NO2")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+
+NO2_reg <-lm(NO2_val ~ NO2_theo, data =  calb_b[c(9:17), ])
+
+summary((NO2_reg))$coefficients -> NO2_tab
+NO2_tab <- as.data.frame(NO2_tab)
+
+round(summary((NO2_reg))$r.squared, 4) -> r_squared
+NO2_tab$r_squared <- c(r_squared, " ")
+
+
+calb_tab <- bind_rows( Ptot_tab, Ntot_tab, NO2_tab)
+calb_tab_b <- data_frame(coef= c( "I", "Val",  "I", "Val",  "I", "Val"))
+calb_tab <- bind_cols(calb_tab_b, calb_tab)
+
+## Template for tab 
+mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params=list(cex = 0.6)),
+    colhead = list(fg_params=list(cex = 0.7)),
+    rowhead = list(fg_params=list(cex = 0.7)))
+## Create tab with lm's coefficients 
+tab <- tableGrob(calb_tab[ , - c(4)], theme = mytheme, rows = c("Ptot", " ", "Ntot", " ", "NO2", ""))
+
+#multiplot
+ggarrange(Ptot_graph, Ntot_graph, NO2_graph, tab)
+
+remove(calb_tab, calb_tab_b, mytheme, NO2_graph, NO2_reg, NO2_tab, Ntot_graph, Ntot_reg, Ntot_tab, Ptot_graph, Ptot_reg, Ptot_tab, tab)
+```
+
+The r^2^ of calibration line round to 1. 
+
+
+## Samples 
+
+```{r}
+#meth A 
+meth_a%>%filter(type == "SAMP") -> samp_a # select only samp (so no calibration or drift points)
+
+
+samp_a %>%
+  filter(echant != "Milliq") -> samp_a
+
+samp_a$echant <- factor(x = samp_a$echant,ordered = TRUE,levels = c("H2O Stareso", "SSW", "cal0.05", "cal0.1", "cal0.2", "cal1", "cal2", "cal5", "Cal10")) #arrange the echant by concentrations
+
+
+#meth B
+
+meth_b%>%filter(type == "SAMP") -> samp_b
+
+## Recodage de samp_b$echant
+samp_b$echant <- as.character(samp_b$echant)
+samp_b$echant[samp_b$echant == "Milliq_____________"] <- "Milliq"
+samp_b$echant[samp_b$echant == "ssw"] <- "SSW"
+
+samp_b %>%
+  filter(echant != "Milliq") -> samp_b
+
+samp_b$echant <- factor(x = samp_b$echant, ordered = TRUE, levels = c("H2O Stareso", "Milliq", "SSW","cal0.05 N+P", "cal1 N+P", "cal30 N+P" ,"cal0.05 NO2", "cal1 NO2", "cal10 NO2" )) #arrange the echant by concentrations
+
+
+```
+
+
+### PO4
+
+It is possible to work with values or values that is converted by calibration line. We first work with concentrations.
+As you can see on the graph, the aged sea water is less concentrated that Milli-Q (ultrapure water of type 1). Furthermore, the SSW (synthetic sea water) is more concentrated that Milli-Q.
+
+```{r}
+ggplot(data = samp_a, mapping = aes(x = echant,y = PO4_val))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Values", caption = "Phosphate's values of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+ggplot(data = samp_a, mapping = aes(x = echant,y = PO4_conc))+
+  geom_boxplot()+ 
+  labs( x = "Samples", y = "Concentration (µmol/L)", caption = "Phosphate's concentration (µmol/L) of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+The boxplots show several extreme points. We remove theses points. 
+
+```{r}
+red <- samp_a[ -c(4, 19:20) , ]
+
+red %>% 
+  group_by(echant)%>%
+  summarise(mean = round(mean(PO4_conc), digits = 4), 
+            sd = round(sd(PO4_conc), digits = 4),cv = round(x = ((sd/mean)*100), digits = 4) ,  
+            number = length(PO4_conc)) -> red
+
+kable(x = red , format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of phosphate's concentrations of different samples.")
+```
+
+In the calibration line, the values of Stareso sea water is of about 2800 ($0 \mu mol/L$) whereas the values of Stareso sea water in sample is of about 600 ($-0.42\mu mol/L$). 
+
+
+### NO3
+
+```{r}
+ggplot(data = samp_a, mapping = aes(x = echant,y = NO3_val))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Values", caption = "Nitrate's values of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+
+
+ggplot(data = samp_a, mapping = aes(x = echant,y = NO3_conc))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Concentration (µmol/L)", caption = "Nitrate's concentration (µmol/L) of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+
+
+```{r}
+samp_a %>% 
+  group_by(echant)%>%
+  summarise(mean = round(mean(NO3_conc), digits = 4), 
+            sd = round(sd(NO3_conc), digits = 4),cv = round(x = ((sd/mean)*100), digits = 4) ,  
+            number = length(NO3_conc)) -> a
+
+kable(a, format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of nitrate's concentrations of different samples.")
+```
+
+In the calibration line, the values of Stareso sea water is of about 3500 ($0 \mu mol/L$) whereas the values of Stareso sea water in sample is of about 3600 ($0.068\mu mol/L$). 
+The table shows that above  $0.05 \mu mol/L$ the coefficient variation is lower that 5%.
+
+### NH4
+
+```{r}
+ggplot(data = samp_a, mapping = aes(x = echant,y = NH4_val))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Values", caption = "Ammonium's values of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+
+ggplot(data = samp_a, mapping = aes(x = echant,y = NH4_conc))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Concentration (µmol/L)", caption = "Ammonium's concentration (µmol/L) of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+
+Several values are zero values except SSW, 2 , 5 and 10 $\mu mol/L$.
+
+
+
+### Ptot
+
+```{r}
+ggplot(data = filter(samp_b, echant == c("H2O Stareso", "SSW","cal0.05 N+P", "cal1 N+P","cal0.05 NO2")), mapping = aes(x = echant,y = Ptot_val))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Values", caption = "Phosphorus's values of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+
+ggplot(data = filter(samp_b, echant == c("H2O Stareso", "SSW","cal0.05 N+P", "cal1 N+P", "cal0.05 NO2")), mapping = aes(x = echant,y = Ptot_conc))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Concentration (µmol/L)", caption = "Phosphorus's concentration (µmol/L) of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+
+
+
+```{r}
+
+red <- samp_b[ -c(6, 10) , ]
+
+red %>% 
+  group_by(echant)%>%
+  summarise(mean = round(mean(Ptot_conc), digits = 4), 
+            sd = round(sd(Ptot_conc), digits = 4),cv = round(x = ((sd/mean)*100), digits = 4) ,  
+            number = length(Ptot_conc)) -> a
+
+kable(a, format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of phosphorus' concentrations of different samples.")
+```
+
+
+
+### Ntot
+
+```{r}
+
+ggplot(data = filter(samp_b, echant == c("H2O Stareso",  "SSW","cal0.05 N+P", "cal1 N+P","cal0.05 NO2")), mapping = aes(x = echant,y = Ntot_val))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Values", caption = "Nitrogen's values of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+
+
+ggplot(data = filter(samp_b, echant == c("H2O Stareso",  "SSW","cal0.05 N+P", "cal1 N+P", "cal0.05 NO2")), mapping = aes(x = echant,y = Ntot_conc))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Concentration (µmol/L)", caption = "Nitrogen's concentration (µmol/L) of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+
+
+```
+
+```{r}
+samp_b %>% 
+  group_by(echant)%>%
+  summarise(mean = round(mean(Ntot_conc), digits = 4), 
+            sd = round(sd(Ntot_conc), digits = 4),cv = round(x = ((sd/mean)*100), digits = 4) ,  
+            number = length(Ntot_conc)) -> a
+
+kable(a, format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of Nitrogen's concentrations of different samples.")
+```
+
+
+### NO2
+
+```{r}
+ggplot(data = samp_b, mapping = aes(x = echant,y = NO2_val))+
+  geom_boxplot()+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Values", caption = "Nitrite's values of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+
+ggplot(data = samp_b, mapping = aes(x = echant,y = NO2_conc))+
+  geom_boxplot() + 
+  labs( x = "Samples", y = "Concentration (µmol/L)", caption = "Nitrite's concentration (µmol/L) of different samples")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+
+```{r}
+samp_b %>% 
+  group_by(echant)%>%
+  summarise(mean = round(mean(NO2_conc), digits = 4), 
+            sd = round(sd(NO2_conc), digits = 4),cv = round(x = ((sd/mean)*100), digits = 4) ,  
+            number = length(NO2_conc)) -> a
+
+kable(a, format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of Nitrite's concentrations of different samples.")
+```
+
+
+# Discussion & perspective
+
+The SSW (water that uses to prepare calibration line and blank) must be purified. 
+
+
+The sea water is obtained by the mixing of Milli-Q, [sodium chloride](https://uk.vwr.com/store/product/777308/vwrc27810) ( $NaCl$, AnalaR Normapur ACS) and  [sodium hydrogen carbonate](https://uk.vwr.com/store/product/776026/vwrc27778) ($NaHCO_{3}$, AnalaR Normapur ACS). $35g/L$ of $NaCl$ and $0.2 g/L$ of $NaHCO_{3}$ are added to Milli-Q. 
+  
+  The sodium chloride and sodium hydrogen carbonate are not clean. There are a slight contamination. In $NaCl$, you can find 5ppm  of phosphate  total Nitrogen at most. You can also find  30ppm of a mixing between $ClO_3$ and $NO_3$. The contaminants of $NaHCO_{3}$ are less important.
+    
+* For 5ppm of $PO_4$ : 
+
+$$5mg \ PO4 \Longrightarrow \ 1kg \ NaCl$$
+$$35g \ NaCl + \ 1L \ MilliQ = synthetic \ sea \ water $$
+$$175\mu g \Longrightarrow \ 1L\  synthetic \ sea \ water$$
+$$\frac{175\mu g/L}{94 \ g/mol} = 1.86 \ \mu mol/L$$
+The same equations can be using for total nitrogen. **Attention, the molar mass changes**. 
+
+$$\frac{175 \ \mu g/L}{14 \ g/mol} = 12.5 \ \mu mol/L$$
+
+
+In the SSW, you can fin $1.86 \ \mu mol/L$ of $PO_4$ and $12.5 \ \mu mol/L$ of total nitrogen at most. It is impossible to know the importance of contaminants.
+    
+
+
+
+IT is important that find a method to age SSW. 
+
+The new experiment must be prepared to check the difference between 0 (in calibration line) and 0 in Stareso sea water samples. 
+
+

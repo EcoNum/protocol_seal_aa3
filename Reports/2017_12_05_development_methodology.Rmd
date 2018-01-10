@@ -1,0 +1,366 @@
+---
+title: "Development of a methodolygy to quantify compounds with Seal AA3"
+date: "14 & 15 december 2017"
+author: "Antoine Batigny & Guyliann Engels"
+output: 
+  html_notebook: 
+    highlight: pygments
+    theme: readable
+    toc: yes
+---
+
+# Aim
+
+* check the degration over the time the same samples
+
+# Introduction 
+
+During a experiment on resprometry , we add a sample that come from calibration's points to study the degradation over the time the same samples.
+
+# M&M
+
+- Calibration lines are realised with Stareso sea water
+
+- Solvant for seal AA3 are realsied with Stareso sea water
+
+# Results
+
+
+```{r}
+library(tidyverse)#version 1.1.1
+library(ggpubr)#version0.1.6
+library(gridExtra)#version 2.2.1
+library(knitr)#version 1.17
+
+data <- read.table(file = "../data/171208D.txt", sep = ";", header = TRUE) # import dataset
+
+# check the method, line 8 , two possibility : method A (PO4, NO3, NH4) or method B (Ptot, Ntot, NO2)
+
+# skip first line
+meth_a <- data[ -c(1:13), ]
+remove(data)
+# rename variable for more simplicity
+meth_a %>%rename(echant = ANAL, type  = X.1, date_analyse = X.5, 
+                PO4_theo = X.6, PO4_conc = X.7, PO4_val = X.8,  
+                NO3_theo = X.9, NO3_conc = X.10, NO3_val = X.11,
+                NH4_theo = X.12, NH4_conc = X.13, NH4_val = X.14)%>%
+  select(c(1,4,8:17))-> meth_a
+
+# special attention for the type of variables and change if necessary
+meth_a %>% mutate(echant = as.character(echant),
+                  type = as.character(type),
+                  PO4_theo = as.numeric(as.character(PO4_theo)),
+                  PO4_conc = as.numeric(as.character(PO4_conc)),
+                  PO4_val = as.numeric(as.character(PO4_val)),
+                  NO3_theo = as.numeric(as.character(NO3_theo)),
+                  NO3_conc = as.numeric(as.character(NO3_conc)),
+                  NO3_val = as.numeric(as.character(NO3_val)),
+                  NH4_theo = as.numeric(as.character(NH4_theo)),
+                  NH4_conc = as.numeric(as.character(NH4_conc)),
+                  NH4_val = as.numeric(as.character(NH4_val))) -> meth_a
+
+meth_a$date_analyse <- as.POSIXlt(meth_a$date_analyse, format = "%d/%m/%Y %H:%M:%S")
+meth_a$date_analyse <- as.POSIXct(meth_a$date_analyse)
+
+
+
+# Import second dataset and check method
+
+meth<- read.table(file = "../data/171211B.txt", sep = ";", header = TRUE) 
+
+# check the method, line 8 , two possibility : method A (PO4, NO3, NH4) or method B (Ptot, Ntot, NO2)
+
+## If METHOD B
+
+# skip first line
+meth_b <- meth[ -c(1:13), ]
+remove(meth)
+# rename variable for more simplicity
+
+meth_b %>%rename(echant = ANAL, type  = X.1, date_analyse = X.5, 
+                Ptot_theo = X.6, Ptot_conc = X.7, Ptot_val = X.8,  
+                Ntot_theo = X.9, Ntot_conc = X.10, Ntot_val = X.11,
+                NO2_theo = X.12, NO2_conc = X.13, NO2_val = X.14)%>%
+  select(c(1,4,8:17))-> meth_b
+
+# special attention for the type of variables and change if necessary
+meth_b %>% mutate(echant = as.character(echant),
+                  type = as.character(type),
+                  Ptot_theo = as.numeric(as.character(Ptot_theo)),
+                  Ptot_conc = as.numeric(as.character(Ptot_conc)),
+                  Ptot_val = as.numeric(as.character(Ptot_val)),
+                  Ntot_theo = as.numeric(as.character(Ntot_theo)),
+                  Ntot_conc = as.numeric(as.character(Ntot_conc)),
+                  Ntot_val = as.numeric(as.character(Ntot_val)),
+                  NO2_theo = as.numeric(as.character(NO2_theo)),
+                  NO2_conc = as.numeric(as.character(NO2_conc)),
+                  NO2_val = as.numeric(as.character(NO2_val))) -> meth_b
+
+meth_b$date_analyse <- as.POSIXlt(meth_b$date_analyse, format = "%d/%m/%Y %H:%M:%S")
+meth_b$date_analyse <- as.POSIXct(meth_b$date_analyse)
+```
+
+
+
+```{r}
+# select CALB to check a good calibration line
+meth_a%>%filter(type == "CALB") -> calb_a
+# If ok next step, otherwise compute a new variable with best calibration line between theorical values and obtained values
+
+#PO4
+PO4_graph <- ggplot(data = calb_a, mapping = aes(x = PO4_theo, y = PO4_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "PO4") +
+  theme(plot.caption = element_text(hjust = 0.5)) +
+  theme_bw()
+# simply graph to visualize the calibration line for PO4
+
+# Compute linear regression and extract r^2^ for PO4
+PO4_reg <-lm(PO4_val ~ PO4_theo, data =  calb_a)
+
+summary((PO4_reg))$coefficients -> PO4_tab
+PO4_tab <- as.data.frame(PO4_tab)
+
+round(summary((PO4_reg))$r.squared, 4) -> r_squared
+PO4_tab$r_squared <- c(r_squared, " ")
+
+# Same procedure for all elements
+#NO3
+
+NO3_graph <- ggplot(data = calb_a, mapping = aes(x = NO3_theo, y = NO3_val))+
+  geom_point()+
+  geom_smooth(method = "lm")+ 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "NO3")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+NO3_reg <-lm(NO3_val ~ NO3_theo, data =  calb_a)
+
+summary((NO3_reg))$coefficients -> NO3_tab
+NO3_tab <- as.data.frame(NO3_tab)
+
+round(summary((NO3_reg))$r.squared, 4) -> r_squared
+NO3_tab$r_squared <- c(r_squared, " ")
+
+#NH4
+
+NH4_graph <- ggplot(data = calb_a, mapping = aes(x = NH4_theo, y = NH4_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "NH4")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+
+NH4_reg <-lm(NH4_val ~ NH4_theo, data =  calb_a)
+
+summary((NH4_reg))$coefficients -> NH4_tab
+NH4_tab <- as.data.frame(NH4_tab)
+
+round(summary((NH4_reg))$r.squared, 4) -> r_squared
+NH4_tab$r_squared <- c(r_squared, " ")
+
+
+calb_tab <- bind_rows( PO4_tab, NO3_tab, NH4_tab)
+calb_tab_a <- data_frame(coef= c( "I", "Val",  "I", "Val",  "I", "Val"))
+calb_tab <- bind_cols(calb_tab_a, calb_tab)
+
+## Template for tab 
+mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params=list(cex = 0.6)),
+    colhead = list(fg_params=list(cex = 0.7)),
+    rowhead = list(fg_params=list(cex = 0.7)))
+## Create tab with lm's coefficients 
+tab <- tableGrob(calb_tab[ , - c(4)], theme = mytheme, rows = c("PO4", " ", "NO3", " ", "NH4", ""))
+
+#multiplot
+ggarrange(PO4_graph, NO3_graph, NH4_graph, tab)
+
+remove(calb_tab, calb_tab_a, mytheme, NH4_graph, NH4_reg, NH4_tab, NO3_graph, NO3_reg, NO3_tab, PO4_graph, PO4_reg, PO4_tab, tab)
+```
+
+
+
+```{r}
+
+# select CALB to check a good calibration line
+meth_b%>%filter(type == "CALB") -> calb_b
+
+
+#Ptot
+
+# Attention we can slice the calb_b to accept only the point for calibration on total phosphorus and total nitrogen
+
+Ptot_graph <- ggplot(data = calb_b[c(1:9), ], mapping = aes(x = Ptot_theo, y = Ptot_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + labs( x = "Theoretical concentrations", y = "Values", caption = "Ptot")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+Ptot_reg <-lm(Ptot_val ~ Ptot_theo, data =  calb_b[c(1:9), ])
+
+summary((Ptot_reg))$coefficients -> Ptot_tab
+Ptot_tab <- as.data.frame(Ptot_tab)
+
+round(summary((Ptot_reg))$r.squared, 4) -> r_squared
+Ptot_tab$r_squared <- c(r_squared, " ")
+
+#Ntot
+Ntot_graph <- ggplot(data = calb_b[c(1:9), ], mapping = aes(x = Ntot_theo, y = Ntot_val))+
+  geom_point()+
+  geom_smooth(method = "lm")+ 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "Ntot")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+Ntot_reg <-lm(Ntot_val ~ Ntot_theo, data =  calb_b[c(1:9), ])
+
+summary((Ntot_reg))$coefficients -> Ntot_tab
+Ntot_tab <- as.data.frame(Ntot_tab)
+
+round(summary((Ntot_reg))$r.squared, 4) -> r_squared
+Ntot_tab$r_squared <- c(r_squared, " ")
+
+#NO2
+
+NO2_graph <- ggplot(data = calb_b[c(10:18), ], mapping = aes(x = NO2_theo, y = NO2_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "NO2")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+
+NO2_reg <-lm(NO2_val ~ NO2_theo, data =  calb_b[c(10:18), ])
+
+summary((NO2_reg))$coefficients -> NO2_tab
+NO2_tab <- as.data.frame(NO2_tab)
+
+round(summary((NO2_reg))$r.squared, 4) -> r_squared
+NO2_tab$r_squared <- c(r_squared, " ")
+
+
+calb_tab <- bind_rows( Ptot_tab, Ntot_tab, NO2_tab)
+calb_tab_b <- data_frame(coef= c( "I", "Val",  "I", "Val",  "I", "Val"))
+calb_tab <- bind_cols(calb_tab_b, calb_tab)
+
+## Template for tab 
+mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params=list(cex = 0.6)),
+    colhead = list(fg_params=list(cex = 0.7)),
+    rowhead = list(fg_params=list(cex = 0.7)))
+## Create tab with lm's coefficients 
+tab <- tableGrob(calb_tab[ , - c(4)], theme = mytheme, rows = c("Ptot", " ", "Ntot", " ", "NO2", ""))
+
+#multiplot
+ggarrange(Ptot_graph, Ntot_graph, NO2_graph, tab)
+
+remove(calb_tab, calb_tab_b, mytheme, NO2_graph, NO2_reg, NO2_tab, Ntot_graph, Ntot_reg, Ntot_tab, Ptot_graph, Ptot_reg, Ptot_tab, tab)
+```
+
+
+```{r}
+
+calb_a_temps <- meth_a[c(2:10, 90:107), ]
+
+calb_a_temps$echant[calb_a_temps$echant == "cal10*"] <- "cal10"
+calb_a_temps$echant[calb_a_temps$echant == "cal5*"] <- "cal5"
+calb_a_temps$echant[calb_a_temps$echant == "cal2*"] <- "cal2"
+calb_a_temps$echant[calb_a_temps$echant == "cal1*"] <- "cal1"
+calb_a_temps$echant[calb_a_temps$echant == "cal05*"] <- "cal0.5"
+calb_a_temps$echant[calb_a_temps$echant == "cal0.3*"] <- "cal0.3"
+calb_a_temps$echant[calb_a_temps$echant == "cal0.2*"] <- "cal0.2"
+calb_a_temps$echant[calb_a_temps$echant == "cal0.1*"] <- "cal0.1"
+calb_a_temps$echant[calb_a_temps$echant == "cal0*"] <- "cal0"
+
+#calb_a_temps$echant <- as.factor(calb_a_temps$echant)
+#levels(calb_a_temps$echant)
+
+calb_a_temps$echant <- factor(x = calb_a_temps$echant, ordered = TRUE, levels = c("cal0", "cal0.1", "cal0.2", "cal0.3", "cal0.5", "cal1", "cal2", "cal5", "cal10"))
+
+calb_b_temps <- meth_b[c(3:20, 103:120), ]
+
+calb_np <- calb_b_temps[-c(10:27), ]
+
+calb_no <- calb_b_temps[c(10:27), ]
+```
+
+
+### PO4
+
+```{r}
+ggplot(data = calb_a_temps, mapping = aes(x = date_analyse, y = PO4_val, color = echant))+
+  geom_point()  + 
+  labs( x = "Time", y = "Values", caption = "Phosphate's values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+
+### NO3
+
+```{r}
+ggplot(data = calb_a_temps, mapping = aes(x = date_analyse, y = NO3_val, color = echant))+
+  geom_point() + 
+  labs( x = "Time", y = "Values", caption = "Nitrate's values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+
+### NH4
+
+```{r}
+ggplot(data = calb_a_temps, mapping = aes(x = date_analyse, y = NH4_val, color = echant))+
+  geom_point() + 
+  labs( x = "Time", y = "Values", caption = "Ammonium's values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+
+### Ptot
+
+```{r}
+ggplot(data = calb_b_temps[-c(10:27), ], mapping = aes(x = date_analyse, y = Ptot_val, color = echant))+
+  geom_point() + 
+  labs( x = "Time", y = "Values", caption = "Total phosphorus' values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+
+### Ntot
+
+```{r}
+ggplot(data = calb_b_temps[-c(10:27), ], mapping = aes(x = date_analyse, y = Ntot_val, color = echant))+
+  geom_point() + 
+  labs( x = "Time", y = "Values", caption = "Total nitrogen's values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+
+
+### NO2
+
+```{r}
+
+ggplot(data = calb_b_temps[-c(1:9, 28:36), ], mapping = aes(x = date_analyse, y = NO2_val, color = echant))+
+  geom_point()  + 
+  labs( x = "Time", y = "Values", caption = "Nitrite's values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+
+
+
+
+# Discussion & perspective
+
+This experiment contains too little measure to explains the degradation over time 
+
+
+

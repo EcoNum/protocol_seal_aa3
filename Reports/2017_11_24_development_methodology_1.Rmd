@@ -1,0 +1,233 @@
+---
+title: "Development of a methodolygy to quantify compounds with Seal AA3"
+date: "24 november 2017"
+author: "Antoine Batigny & Guyliann Engels"
+output: 
+  html_notebook: 
+    highlight: pygments
+    theme: readable
+    toc: yes
+---
+
+# Aim 
+
+* Check the degradation of samples over time
+
+# Introduction
+
+we use the Seal AA3 to compare several water's solutions  with the addition of nitrogen and phosphorus compounds. 
+
+# M&M
+
+- Calibration lines are realised with Stareso sea water
+
+- Solvant for seal AA3 are realsied with Stareso sea water
+
+# Results
+
+```{r}
+
+library(tidyverse)#version 1.1.1
+library(ggpubr)#version0.1.6
+library(gridExtra)#version 2.2.1
+library(knitr)#version 1.17
+
+data <- read.table(file = "../data/171124AR1.txt", sep = ";", header = TRUE) # import dataset
+
+# check the method, line 8 , two possibility : method A (PO4, NO3, NH4) or method B (Ptot, Ntot, NO2)
+
+# skip first line
+meth_a <- data[ -c(1:13), ]
+remove(data)
+# rename variable for more simplicity
+meth_a %>%rename(echant = ANAL, type  = X.1, date_analyse = X.5, 
+                PO4_theo = X.6, PO4_conc = X.7, PO4_val = X.8,  
+                NO3_theo = X.9, NO3_conc = X.10, NO3_val = X.11,
+                NH4_theo = X.12, NH4_conc = X.13, NH4_val = X.14)%>%
+  select(c(1,4,8:17))-> meth_a
+
+# special attention for the type of variables and change if necessary
+meth_a %>% mutate(echant = as.character(echant),
+                  type = as.character(type),
+                  PO4_theo = as.numeric(as.character(PO4_theo)),
+                  PO4_conc = as.numeric(as.character(PO4_conc)),
+                  PO4_val = as.numeric(as.character(PO4_val)),
+                  NO3_theo = as.numeric(as.character(NO3_theo)),
+                  NO3_conc = as.numeric(as.character(NO3_conc)),
+                  NO3_val = as.numeric(as.character(NO3_val)),
+                  NH4_theo = as.numeric(as.character(NH4_theo)),
+                  NH4_conc = as.numeric(as.character(NH4_conc)),
+                  NH4_val = as.numeric(as.character(NH4_val))) -> meth_a
+
+meth_a$date_analyse <- as.POSIXlt(meth_a$date_analyse, format = "%d/%m/%Y %H:%M:%S")
+meth_a$date_analyse <- as.POSIXct(meth_a$date_analyse)
+
+```
+
+
+## Calibration lines
+
+```{r}
+# select CALB to check a good calibration line
+meth_a%>%filter(type == "CALB") -> calb_a
+# If ok next step, otherwise compute a new variable with best calibration line between theorical values and obtained values
+
+#PO4
+PO4_graph <- ggplot(data = calb_a, mapping = aes(x = PO4_theo, y = PO4_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "PO4") +
+  theme(plot.caption = element_text(hjust = 0.5)) +
+  theme_bw()
+# simply graph to visualize the calibration line for PO4
+
+# Compute linear regression and extract r^2^ for PO4
+PO4_reg <-lm(PO4_val ~ PO4_theo, data =  calb_a)
+
+summary((PO4_reg))$coefficients -> PO4_tab
+PO4_tab <- as.data.frame(PO4_tab)
+
+round(summary((PO4_reg))$r.squared, 4) -> r_squared
+PO4_tab$r_squared <- c(r_squared, " ")
+
+# Same procedure for all elements
+#NO3
+
+NO3_graph <- ggplot(data = calb_a, mapping = aes(x = NO3_theo, y = NO3_val))+
+  geom_point()+
+  geom_smooth(method = "lm")+ 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "NO3")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+NO3_reg <-lm(NO3_val ~ NO3_theo, data =  calb_a)
+
+summary((NO3_reg))$coefficients -> NO3_tab
+NO3_tab <- as.data.frame(NO3_tab)
+
+round(summary((NO3_reg))$r.squared, 4) -> r_squared
+NO3_tab$r_squared <- c(r_squared, " ")
+
+#NH4
+
+NH4_graph <- ggplot(data = calb_a, mapping = aes(x = NH4_theo, y = NH4_val))+
+  geom_point()+
+  geom_smooth(method = "lm") + 
+  labs( x = "Theoretical concentrations", y = "Values", caption = "NH4")+
+  theme(plot.caption = element_text(hjust = 0.5))+
+  theme_bw()
+
+
+NH4_reg <-lm(NH4_val ~ NH4_theo, data =  calb_a)
+
+summary((NH4_reg))$coefficients -> NH4_tab
+NH4_tab <- as.data.frame(NH4_tab)
+
+round(summary((NH4_reg))$r.squared, 4) -> r_squared
+NH4_tab$r_squared <- c(r_squared, " ")
+
+
+calb_tab <- bind_rows( PO4_tab, NO3_tab, NH4_tab)
+calb_tab_a <- data_frame(coef= c( "I", "Val",  "I", "Val",  "I", "Val"))
+calb_tab <- bind_cols(calb_tab_a, calb_tab)
+
+## Template for tab 
+mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params=list(cex = 0.6)),
+    colhead = list(fg_params=list(cex = 0.7)),
+    rowhead = list(fg_params=list(cex = 0.7)))
+## Create tab with lm's coefficients 
+tab <- tableGrob(calb_tab[ , - c(4)], theme = mytheme, rows = c("PO4", " ", "NO3", " ", "NH4", ""))
+
+#multiplot
+ggarrange(PO4_graph, NO3_graph, NH4_graph, tab)
+
+remove(calb_tab, calb_tab_a, mytheme, NH4_graph, NH4_reg, NH4_tab, NO3_graph, NO3_reg, NO3_tab, PO4_graph, PO4_reg, PO4_tab, tab)
+```
+
+## Sample
+
+
+```{r}
+
+meth_a %>%
+  filter(echant == "cal0"  | echant =="cal0.1"  | echant =="cal0.2"  | echant =="cal0.3"  | echant =="cal0.5"  | echant =="cal1"  |  echant =="cal2"  | echant =="cal5" | echant =="cal10")-> samp_a
+
+samp_a$echant <- factor(samp_a$echant, 
+                                   labels = c("0", "0.1", "0.2", "0.3", "0.5", "1", "2", "5", "10"),
+                                   levels = c("cal0", "cal0.1", "cal0.2", "cal0.3", "cal0.5", "cal1", "cal2", "cal5", "cal10"),  
+                                   ordered = TRUE)
+```
+
+
+### PO4
+
+```{r}
+ggplot(data = samp_a, mapping = aes(x = date_analyse, y = PO4_val, color = echant))+
+  geom_point()  + 
+  labs( x = "Time", y = "Values", caption = "Phosphate's values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+```{r}
+samp_a %>%
+  group_by(echant)%>%
+  summarise(mean = mean(PO4_val), 
+            sd = sd(PO4_val),
+            cv = round( ((sd(PO4_val)/mean(PO4_val))*100), digits = 2), 
+            nbre = length(PO4_val)) -> a
+
+kable(a, format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of phosphate's values of different samples.")
+```
+
+
+
+### NO3
+
+```{r}
+ggplot(data = samp_a, mapping = aes(x = date_analyse, y = NO3_val, color = echant))+
+  geom_point()  + 
+  labs( x = "Time", y = "Values", caption = "Nitrate's values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+```{r}
+samp_a %>%
+  group_by(echant)%>%
+  summarise(mean = mean(NO3_val), 
+            sd = sd(NO3_val),
+            cv = round( ((sd(NO3_val)/mean(NO3_val))*100), digits = 2), 
+            nbre = length(NO3_val)) -> a
+
+kable(a, format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of nitrate's values of different samples.")
+```
+
+### NH4
+
+
+```{r}
+ggplot(data = samp_a, mapping = aes(x = date_analyse, y = NH4_val, color = echant))+
+  geom_point()  + 
+  labs( x = "Time", y = "Values", caption = "Ammonium's values over time", color = "Sample")+
+  theme_bw() +
+  theme(plot.caption = element_text(hjust = 0.5), legend.position = "top")
+```
+
+
+```{r}
+samp_a %>%
+  group_by(echant)%>%
+  summarise(mean = mean(NH4_val), 
+            sd = sd(NH4_val),
+            cv = round( ((sd(NH4_val)/mean(NH4_val))*100), digits = 2), 
+            nbre = length(NH4_val)) -> a
+
+kable(a, format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of nitrate's values of different samples.")
+```
+
+# Discussion & perspectives
+
+* We can observe that the variation coefficient is simalar between the experiment 2017-11-24 on reproductibility. 
+* The NH4 is more sensitive that NO3 and PO4
