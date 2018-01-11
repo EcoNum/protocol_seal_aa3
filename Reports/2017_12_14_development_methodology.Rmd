@@ -22,8 +22,6 @@ output:
 we use the Seal AA3 to compare several water's solutions (fresh water and sea water) with the addition of nitrogen and phosphorus compounds. 
 
 
-
-
 We analyse :
 
 
@@ -300,6 +298,9 @@ samp_a %>%
 samp_a$echant <- factor(x = samp_a$echant,ordered = TRUE,levels = c("H2O Stareso", "SSW", "cal0.05", "cal0.1", "cal0.2", "cal1", "cal2", "cal5", "Cal10")) #arrange the echant by concentrations
 
 
+#save data only for a short presentation lab meeting
+write_rds(x = samp_a, path = "../Cache/conta_metha.rds")
+
 #meth B
 
 meth_b%>%filter(type == "SAMP") -> samp_b
@@ -341,11 +342,14 @@ The boxplots show several extreme points. We remove theses points.
 ```{r}
 red <- samp_a[ -c(4, 19:20) , ]
 
+
 red %>% 
   group_by(echant)%>%
   summarise(mean = round(mean(PO4_conc), digits = 4), 
             sd = round(sd(PO4_conc), digits = 4),cv = round(x = ((sd/mean)*100), digits = 4) ,  
             number = length(PO4_conc)) -> red
+
+
 
 kable(x = red , format = "pandoc", caption = "Mean, standard deviation (sd) and variation coefficient (cv) of phosphate's concentrations of different samples.")
 ```

@@ -157,6 +157,11 @@ samp_a$echant <- factor(samp_a$echant,
                                    labels = c("0", "0.1", "0.2", "0.3", "0.5", "1", "2", "5", "10"),
                                    levels = c("cal0", "cal0.1", "cal0.2", "cal0.3", "cal0.5", "cal1", "cal2", "cal5", "cal10"),  
                                    ordered = TRUE)
+
+#save data only for a short presentation lab meeting
+#write_rds(x = samp_a, path = "../Cache/degradation_metha.rds")
+
+
 ```
 
 
