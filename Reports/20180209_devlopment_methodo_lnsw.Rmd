@@ -1,0 +1,29 @@
+---
+title: "Low Nutrient Seawater's preparation"
+author: "Antoine Batigny & Engels Guyliann"
+date: "09 february 2018"
+output: 
+  html_notebook: 
+    highlight: pygments
+    theme: readable
+    toc: yes
+    toc_float: yes
+bibliography: Bibliography/biblio.bib
+---
+
+# Aim 
+
+* Produce a Low Nutrient SeaWater (LNSW) 
+
+# Introduction
+
+The last experiment showed that the Synthetic Sea Water (SSW) is too concentrated in nutrients. Hansen and Koroleff [-@Hansen2007a] advise the use of LNSW. The LNSW is the surface seawater collected in late spring or summer filtered and stored in dark several weeks. 
+
+We can't collect the water in the sea. So That you use a mesocosme sea water and SSW to prepare a LNSW. We can use several cycle light/dark for phytoplankton and bacteria draw nutrients.
+
+# M&M
+
+We draw and filtered water in mesocosm. Next we put this water in dark.
+
+
+# Bibliography

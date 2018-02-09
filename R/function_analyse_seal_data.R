@@ -34,15 +34,15 @@ import_aa3 <- function(file, project = basename(dirname(file))){
   # Method information
   # Method information
   
-  channel_1 <- list(method  = as.character(header[9,10]), unity = as.character(header[10,10]), 
+  channel_1 <- list(method  = as.character(header[9,10]), unit = as.character(header[10,10]), 
                     base = as.character(header[11,10]) , gain = as.character(header[12,10]), 
                     lamp = as.character(header[13,10]))
   
-  channel_2 <- list(method  = as.character(header[9,13]), unity = as.character(header[10,13]) , 
+  channel_2 <- list(method  = as.character(header[9,13]), unit = as.character(header[10,13]) , 
                     base = as.character(header[11,13]) , gain = as.character(header[12,13]), 
                     lamp = as.character(header[13,10]))
   
-  channel_3 <- list(method  = as.character(header[9,16]), unity = as.character(header[10,16]) , 
+  channel_3 <- list(method  = as.character(header[9,16]), unit = as.character(header[10,16]) , 
                     base = as.character(header[11,16]) , gain = as.character(header[12,16]), 
                     lamp = as.character(header[13,16]))
   
@@ -88,6 +88,7 @@ import_aa3 <- function(file, project = basename(dirname(file))){
 # test with 2 files one method A  "data/171215A.txt" and one method B "data/171214A.txt"
 # First define where are located the local and remote EcoNumData repositories on this computer
 
+library(econum)
 set_opt_econum("local_repos", "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data")
 set_opt_econum("remote_repos", "/Volumes/Public/EcoNumData")
 
