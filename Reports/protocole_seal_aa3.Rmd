@@ -1,0 +1,79 @@
+---
+title: "Protocole du dosage des nutriments avec le SEAL AA3"
+subtitle: "Version Française"
+author: "Antoine Batigny & Engels Guyliann"
+bibliography: Bibliography/biblio.bib
+output: html_notebook
+---
+
+# Objectif 
+
+Protocole complet afin de réaliser des dosages de composés phosphorés et azotées
+
+# Paramètre
+
+Paramètres | information  par set d'analyse
+-------------------------------------------|------------------
+Temps de préparation (remise en route de l'instrument) | 1 journées
+Temps de préparation (en routine) | 
+Nombre d'échantillons |
+
+Lorsque le SEAL reste une longue période inutilisé (plus d'un mois), la majorité des solutions doivent être changé. Cette opération prend un temps considérable. 
+
+
+# Protocole
+
+## Echantillonage
+
+Les échantillons prélévés doivent être analysés le plus rapidement possible ou bien placé au congélateur à -20°C [@Kremling2007, @Aminot2007].
+
+## Préparation des solutions 
+
+### Ammonium
+
+Les solutions pour doser l'ammonium suivent la méthode [G-171-96](http://www.seal-analytical.com/Methods/AutoAnalyzerMethods/AutoAnalyzerMulti-testMethods/tabid/80/language/en-US/Default.aspx) de SEAL 
+
+### Nitrate
+
+Les solutions pour doser l'ammonium suivent la méthode G-384-08 de SEAL 
+
+### Phosphate
+
+Les solutions pour doser les phosphates 
+
+#### Réactif 1 : solution d'acide ascorbique
+
+- Dissolvez 2g d'acide ascorbique ($C_6H_8O_6$, M de 176 g/mol) dans 500 ml d'eau milliQ
+- Ajoutez ensuite 0.5 ml d'agent mouillant Aérosol 22 (Sigma A-973)
+
+**Renouvellement journalier**
+
+#### Réactif 2 : solution acide au molybdène et à l'antimoine
+
+Dans un flacon en verre brun, 
+
+- Versez $800ml$ de solution stock d'acide sulfurique  qui provient de : 
+    + Ajoutez en agitant 85 ml  d'acide sulfurique concentré à 800ml d'eau distillé dans un ballon jaugé
+    + Laissez refroidrir
+    + Compléter pour atteindre 1000mL
+    
+    **Conservation indéterminée**
+    
+- Ajoutez $150 ml$ de solution stock de molybdate et mélangez qui provient de :
+    + Dissolez 40g d'hptamolybdate d'ammonium (Merck, n°1182) dans 800 ml d'eau milliQ 
+    + Completer pour atteindre 1000ml
+    
+    **Conservation dans le noir de plusieurs semaines, sauf si apparation d'un dépot**
+
+- Ajoutez 50 ml de solution stock de d'oxytartrate d'antimoine et mélanger qui provient de :
+    + Dissoudre $1.5g$ d'oxytartrate potassique d'atimoine (III) hémihydraté (Merck, n°8092) dans 500ml d'eau milliQ 
+    
+    **Conservation 1 mois au frigo**
+
+
+**Renouvellement mensuelle**
+
+## Préparation des standards
+
+
+# Bibliographie

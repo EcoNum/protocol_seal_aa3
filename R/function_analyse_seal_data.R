@@ -1,14 +1,9 @@
 
 
-
-# function tentative #########
-# I would like prepare a function or routine analyses  to replace test version 1, test version 2, test version 3.
-
-# this function has for objectives to import txt file of seal AA3 
-# and transform to prepare for function new_econumdata
-
 library(econum)
 library(readr)
+
+# Import function and convert txt file into EcoNumData ####
 
 import_aa3 <- function(file, project = basename(dirname(file))){
   
@@ -82,19 +77,76 @@ import_aa3 <- function(file, project = basename(dirname(file))){
   new_econum_data(raw_data, metadata = meta, class = "AA3")
 } 
 
-# this is the routine analyses
-# you must choose the file and the name of project
 
 # test with 2 files one method A  "data/171215A.txt" and one method B "data/171214A.txt"
-# First define where are located the local and remote EcoNumData repositories on this computer
 
-library(econum)
-set_opt_econum("local_repos", "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data")
-set_opt_econum("remote_repos", "/Volumes/Public/EcoNumData")
+#test <- import_aa3(file = "data/171215A.txt", project = "Nutrient_test")
 
-repos_save(import_aa3(file = "Data/171124AR1.txt", project = "Nutrient_test"))
+# Chart of calibration point ####
 
-class(EcoNumData_AA3.a)
-# Data recovering from the repository
-repos_load(file = "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data/Nutrient_test/AA3/171215A_2017-12-15_11.44.46_5A331080_AA3.RData")
+calb_aa3 <- function(x){
+  samp <- x[x$sample_type == "CALB", ]
+  # Form that allows  to be adapted for the method A and method B
+  
+  # method_1
+  attr(x = x, which = "method")$channel_1$method -> m_1
+  
+  samp %>.%
+    select(., c(5,7)) %>.%
+    na.omit(.) -> calb1
+  #calb1
+  
+  a <- chart(data = calb1, formula = calb1[ , 2] ~ calb1[ , 1]) +
+    geom_point() +
+    labs( x = "Standard", y = "Values") +
+    geom_smooth(method = "lm")
+  #a
+  
+  # method_2
+  attr(x = x, which = "method")$channel_2$method -> m_2
+  
+  samp %>.%
+    select(., c(8,10)) %>.%
+    na.omit(.) -> calb2
+  #calb2
+  
+  b <- chart(data = calb2, formula = calb2[, 2] ~ calb2[, 1]) +
+    geom_point() +
+    labs( x = "Standard", y = "Values") +
+    geom_smooth(method = "lm")
+  #b
+  #
+  # method_3
+  attr(x = x, which = "method")$channel_3$method -> m_3
+  
+  samp %>.%
+    select(., c(11,13)) %>.%
+    na.omit(.) -> calb3
+  #calb3
+  
+  c <- chart(data = calb3, formula = calb3[ , 2] ~ calb3[ , 1]) +
+    geom_point() +
+    labs( x = "Standard", y = "Values") +
+    geom_smooth(method = "lm")
+  #c
+  
+  # Summary of data
+  
+  lm_tab <- calb_linear_model(x = x)
+  
+  ## Template for tab 
+  mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params = list(cex = 0.7)),
+    colhead = list(fg_params = list(cex = 0.7)),
+    rowhead = list(fg_params = list(cex = 0.7)))
+  
+  ## Create tab with lm's coefficients 
+  d <- gridExtra::tableGrob(lm_tab, theme = mytheme)
+  
+  # combine plot
+  ggarrange(a,b,c,d, labels = c(m_1, m_2, m_3, "Linear model"), 
+            font.label = list(size = 14, face = "bold"), align = "hv",
+            label.x = c(0.5, 0.5, 0.5, 0.2))
+}
 
+#calb_aa3(EcoNumData_AA3.a)
