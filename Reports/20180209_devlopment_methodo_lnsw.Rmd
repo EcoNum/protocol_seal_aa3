@@ -19,11 +19,13 @@ bibliography: Bibliography/biblio.bib
 
 The last experiment showed that the Synthetic Sea Water (SSW) is too concentrated in nutrients. Hansen and Koroleff [-@Hansen2007a] advise the use of LNSW. The LNSW is the surface seawater collected in late spring or summer filtered and stored in dark several weeks. 
 
-We can't collect the water in the sea. So That you use a mesocosme sea water and SSW to prepare a LNSW. We can use several cycle light/dark for phytoplankton and bacteria draw nutrients.
+We can't collect the water in the sea. So That we use a mesocosme sea water and SSW to prepare a LNSW. We must be use several cycle light/dark for phytoplankton and bacteria draw nutrients.
 
 # M&M
 
-We draw and filtered water in mesocosm. Next we put this water in dark.
+We draw and filtered water in mesocosm. 
+
+We prepare 
 
 
 # Bibliography
