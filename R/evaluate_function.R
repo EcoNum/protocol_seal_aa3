@@ -23,7 +23,7 @@ repos_save(import_aa3(file = "Data/171211B.TXT", project = "Nutrient_test"), rem
 repos_save(import_aa3(file = "Data/171214A.TXT", project = "Nutrient_test"), remote = FALSE)
 repos_save(import_aa3(file = "Data/171215A.TXT", project = "Nutrient_test"), remote = FALSE)
 repos_save(import_aa3(file = "Data/180222A.txt", project = "Nutrient_test"), remote = FALSE)
-
+repos_save(import_aa3(file = "Data/180313D.txt", project = "oceano2018"), remote = FALSE)
 
 # Data recovering from the repository ####
 
@@ -39,3 +39,18 @@ tab1 <-calb_linear_model(EcoNumData_AA3.a)
 calb_aa3(EcoNumData_AA3.a)
 
 
+## Importation and conversion
+
+
+SciViews::R
+library(econum)
+# the local repository
+set_opt_econum("local_repos", "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data")
+# Save in econumdata the calibration information.
+
+source("R/function_analyse_seal_data.R")
+
+file_aa3 <- "Data/180305B.txt" # or file_aa3 <- "Data/180305A.txt"
+file_convert <- "Data/nu01_20180305.xlsx"
+
+import_aa3_sample(file_aa3 = file_aa3 , file_convert = file_convert)

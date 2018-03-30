@@ -5,15 +5,16 @@ library(readr)
 
 # Import function and convert txt file into EcoNumData ####
 
-import_aa3 <- function(file, project = basename(dirname(file))){
+convert_aa3 <- function(file_aa3_txt, file_aa3_xlsx, project = basename(dirname(file))){
   
   # Extract the metadata and create a list that respect the list of EcoNumData
-  header <- read_delim(file = file, 
-                       delim = ";",
-                       n_max = 13,
-                       col_names = FALSE,
-                       col_types = cols( .default = "c"),
-                       locale = readr::locale(encoding = "LATIN1")) # particulary attention with the encoding system
+  header <- readr::read_delim(file = file_aa3_txt, 
+                              delim = ";",
+                              n_max = 13,
+                              col_names = FALSE,
+                              col_types = readr::cols( .default = "c"),
+                              locale = readr::locale(encoding = "LATIN1")) # particulary attention with the encoding system
+  
   # Extract nutrients that are analysed
   results <- as.character(header[9, c(10, 13, 16)])
   
@@ -21,14 +22,12 @@ import_aa3 <- function(file, project = basename(dirname(file))){
   stds <- paste(results, "std", sep = "_")
   concs <- paste(results, "conc", sep = "_")
   vals <- paste(results, "values", sep = "_")
- 
+  
   # Change in data  NPinorganique.ANL in inorganique 
-  header$X2[header$X2 == "NPinorganique.ANL" ] <- "a"
-  header$X2[header$X2 == "NPorganique.ANL" ] <- "b"
+  header$X2[header$X2 == "NPinorganique.ANL" ] <- "inorga"
+  header$X2[header$X2 == "NPorganique.ANL" ] <- "orga"
   
-  # Method information
-  # Method information
-  
+  # Create a several list wit the method's information
   channel_1 <- list(method  = as.character(header[9,10]), unit = as.character(header[10,10]), 
                     base = as.character(header[11,10]) , gain = as.character(header[12,10]), 
                     lamp = as.character(header[13,10]))
@@ -42,111 +41,81 @@ import_aa3 <- function(file, project = basename(dirname(file))){
                     lamp = as.character(header[13,16]))
   
   method <- list(channel_1 = channel_1, channel_2 = channel_2, channel_3 = channel_3) 
+  
   # extract metadata
   meta <- list(project = project, 
-               sample = sub("\\.RUN$", "", as.character(header[2, 2])), 
+               sample = paste(sub("\\.RUN$", "", as.character(header[2, 2])), 
+                              as.character(header[1,2]),sep = "-"), 
                sample_date = as.POSIXlt(paste(as.character(header[3, 2]),
-                 as.character(header[4, 2])),
-                 format = "%d/%m/%Y %H:%M:%S"),
+                                              as.character(header[4, 2])),
+                                        format = "%d/%m/%Y %H:%M:%S"),
                author = as.character(header[5, 2]),
-               date = as.POSIXct(as.character(header[3, 2]), format = "%d/%m/%Y"),
+               date = as.POSIXct(as.character(header[3, 2]), 
+                                 format = "%d/%m/%Y"),
                comment = as.character(header[6, 2]),
                topic = as.character(header[1, 2]))
   
-  # Extract raw data and remove a metadata 
-  raw_data <- read_delim(file = file, delim = ";", skip = 14,
-    col_names = c("sample_id", "peak_number", "cup_number", "sample_type", "cup_group", 
-                  "x_1", "x_2", "date_time", stds[1], concs[1],
-                  vals[1], stds[2], concs[2], vals[2], stds[3],
-                  concs[3], vals[3], "x_3", "x_4"), 
-    col_types = cols(sample_id = col_character(),
-                     peak_number = col_integer(),
-                     cup_number = col_skip(),
-                     sample_type = col_character(),
-                     cup_group = col_skip(),
-                     x_1 = col_skip(),
-                     x_2 = col_skip(),
-                     date_time = col_datetime(format = "%d/%m/%Y %H:%M:%S"),
-                     x_3 = col_skip(),
-                     x_4 = col_skip(),
-                     .default = col_number()))
+  # Extract raw data
+  raw_data <- readr::read_delim(file = file_aa3_txt, delim = ";", skip = 13) 
   
-  attr(raw_data, "spec") <- NULL
+  # recoding type of variable
+  raw_data$`Cup Type` <- as.factor(raw_data$`Cup Type`)
+  raw_data$`Date Time Stamp` <- as.POSIXct(raw_data$`Date Time Stamp`,
+                                           format = "%d/%m/%Y %H:%M:%S")
+  raw_data$X9 <- as.numeric(raw_data$X9)
+  raw_data$`Results 1` <- as.numeric(raw_data$`Results 1`)
+  raw_data$X12 <- as.numeric(raw_data$X12)
+  raw_data$`Results 2` <- as.numeric(raw_data$`Results 2`)
+  raw_data$X15 <- as.numeric(raw_data$X15)
+  raw_data$`Results 3` <- as.numeric(raw_data$`Results 3`)
+  
+  # Add units' informations
+  attr(raw_data$X9, "units") <- method$channel_1$unit
+  attr(raw_data$`Results 1`, "units") <- method$channel_1$unit
+  attr(raw_data$X12, "untis") <- method$channel_2$unit
+  attr(raw_data$`Results 2`, "untis") <- method$channel_2$unit
+  attr(raw_data$X15, "untis") <- method$channel_3$unit
+  attr(raw_data$`Results 3`, "untis") <- method$channel_3$unit
+  
+  # Rename the columns in raw_data
+  names(raw_data) <- c("sample_id", "peak_number",
+                       "cup_number", "sample_type", "cup_group", 
+                       "x_1", "x_2", "date_time", stds[1], concs[1],
+                       vals[1], stds[2], concs[2], vals[2], stds[3],
+                       concs[3], vals[3], "x_3", "x_4")
+  
+  # Select variables in raw_data
+  raw_data <- raw_data[ , -c(3, 5:7, 18, 19)]
+  
+  
+  
+  # import xlsx file
+  add_data <- readxl::read_xlsx(file_aa3_xlsx, sheet = "data")
+  
+  raw_data <- dplyr::left_join(raw_data, add_data, by = "sample_id")
+  
+  # Add method informations
   attr(raw_data, "method") <- method
   
-  new_econum_data(raw_data, metadata = meta, class = "AA3")
-} 
-
-
-# test with 2 files one method A  "data/171215A.txt" and one method B "data/171214A.txt"
-
-#test <- import_aa3(file = "data/171215A.txt", project = "Nutrient_test")
-
-# Chart of calibration point ####
-
-calb_aa3 <- function(x){
-  samp <- x[x$sample_type == "CALB", ]
-  # Form that allows  to be adapted for the method A and method B
-  
-  # method_1
-  attr(x = x, which = "method")$channel_1$method -> m_1
-  
-  samp %>.%
-    select(., c(5,7)) %>.%
-    na.omit(.) -> calb1
-  #calb1
-  
-  a <- chart(data = calb1, formula = calb1[ , 2] ~ calb1[ , 1]) +
-    geom_point() +
-    labs( x = "Standard", y = "Values") +
-    geom_smooth(method = "lm")
-  #a
-  
-  # method_2
-  attr(x = x, which = "method")$channel_2$method -> m_2
-  
-  samp %>.%
-    select(., c(8,10)) %>.%
-    na.omit(.) -> calb2
-  #calb2
-  
-  b <- chart(data = calb2, formula = calb2[, 2] ~ calb2[, 1]) +
-    geom_point() +
-    labs( x = "Standard", y = "Values") +
-    geom_smooth(method = "lm")
-  #b
-  #
-  # method_3
-  attr(x = x, which = "method")$channel_3$method -> m_3
-  
-  samp %>.%
-    select(., c(11,13)) %>.%
-    na.omit(.) -> calb3
-  #calb3
-  
-  c <- chart(data = calb3, formula = calb3[ , 2] ~ calb3[ , 1]) +
-    geom_point() +
-    labs( x = "Standard", y = "Values") +
-    geom_smooth(method = "lm")
-  #c
-  
-  # Summary of data
-  
-  lm_tab <- calb_linear_model(x = x)
-  
-  ## Template for tab 
-  mytheme <- gridExtra::ttheme_default(
-    core = list(fg_params = list(cex = 0.7)),
-    colhead = list(fg_params = list(cex = 0.7)),
-    rowhead = list(fg_params = list(cex = 0.7)))
-  
-  ## Create tab with lm's coefficients 
-  d <- gridExtra::tableGrob(lm_tab, theme = mytheme)
-  
-  # combine plot
-  ggarrange(a,b,c,d, labels = c(m_1, m_2, m_3, "Linear model"), 
-            font.label = list(size = 14, face = "bold"), align = "hv",
-            label.x = c(0.5, 0.5, 0.5, 0.2))
+  # Preparation of econum data object
+  econum::new_econum_data(raw_data, metadata = meta, class = "aa3")
 }
 
-#calb_aa3(EcoNumData_AA3.a)
+
+# first test
+#test <- convert_aa3(file_aa3_txt = "Data/180305A.txt" ,file_aa3_xlsx = "Data/20180305.xlsx", project = "nutrient_aa3")
+
+#Check with Data/180305B.txt", Data/180305A.txt", 
+# Select the local repository
+#econum::set_opt_econum("local_repos", "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data")
+
+# Select the remote repository
+#set_opt_econum("remote_repos", "/Volumes/Public/EcoNumData")
+
+#econum::repos_save(object = convert_aa3(file_aa3_txt = "Data/180313D.txt" ,file_aa3_xlsx = "Data/180313D.xlsx", project = "nutrient_aa3"), remote = FALSE)
+
+
+#econum::repos_load(file = "Data/nutrient_aa3/aa3/180313D-inorga_2018-03-13_13.41.32_5AA71480_aa3.RData")
+
+
+
