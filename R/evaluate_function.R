@@ -54,3 +54,73 @@ file_aa3 <- "Data/180305B.txt" # or file_aa3 <- "Data/180305A.txt"
 file_convert <- "Data/nu01_20180305.xlsx"
 
 import_aa3_sample(file_aa3 = file_aa3 , file_convert = file_convert)
+
+
+## Ecophysio & mesocosm-monitoring
+
+
+source("R/function_analyse_seal_data.R")
+
+library(econum)
+# the local repository
+set_opt_econum("local_repos", "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data")
+
+econum::repos_save(object = convert_aa3(file_aa3_txt = "Data/180430AR1.txt" ,file_aa3_xlsx = "Data/180430AR1.xlsx", project = "mesocosm_monitoring"), remote = FALSE)
+
+econum::repos_save(object = convert_aa3(file_aa3_txt = "Data/180503A.txt" ,file_aa3_xlsx = "Data/180503A.xlsx", project = "mesocosm2018"), remote = FALSE)
+
+econum::repos_save(object = convert_aa3(file_aa3_txt = "Data/180427A.txt" ,file_aa3_xlsx = "Data/180424A_B.xlsx", project = "ecophysio2018"), remote = FALSE)
+
+library(econum)
+SciViews::R
+
+repos_load(file = "Data/ecophysio2018/aa3/180424A-inorga_2018-04-24_14.35.20_5ADE7380_aa3.RData")
+nutri <- EcoNumData_aa3.inorga
+
+repos_load(file = "Data/ecophysio2018/aa3/180424B-inorga_2018-04-24_16.33.58_5ADE7380_aa3.RData")
+nutri1 <- EcoNumData_aa3.inorga
+
+nutri <- bind_rows(nutri, nutri1)
+rm(EcoNumData_aa3.inorga, nutri1)
+
+nutri <- filter(nutri, sample_type == "SAMP")
+nutri <- filter(nutri, project != "NA")
+
+nutri <- separate(nutri, col = sample, into = c("respiro", "type", "cycle"), sep = "-" )
+
+nutri$sample_date <- as.POSIXct(nutri$sample_date)
+
+
+chart(data = filter(nutri, NO3_conc <= 1), formula = NO3_conc ~ sample_date %col=% respiro) +
+  geom_point() +
+  geom_line()
+
+
+
+chart(data = nutri, formula = PO4_conc ~ sample_date %col=% respiro) +
+  geom_point() +
+  geom_line()
+
+chart(data = nutri, formula = NH4_conc ~ sample_date %col=% respiro) +
+  geom_point() +
+  geom_line(mapping = aes(col = respiro))
+
+
+
+repos_load(file = "Data/ecophysio2018/aa3/180425A-inorga_2018-04-25_13.48.23_5ADFC500_aa3.RData")
+
+nutri <- EcoNumData_aa3.inorga
+nutri <- filter(nutri, sample_type == "SAMP")
+
+chart(data = nutri, formula = NO3_conc ~ sample_date %col=% sample) +
+  geom_point() +
+  geom_line()
+
+chart(data = nutri, formula = PO4_conc ~ sample_date %col=% sample) +
+  geom_point() +
+  geom_line()
+
+chart(data = nutri, formula = NH4_conc ~ sample_date %col=% sample) +
+  geom_point() +
+  geom_line()
+

@@ -1,0 +1,273 @@
+---
+title: "Analyse des données provenant du SEAL AA3"
+author: "Engels Guyliann"
+output: html_notebook
+abstract: "Ce document a pour objectif d'expliquer la démarche amenant à la conversion du fichier provenant du seal AA3 en format TXT vers un fichier en format EcoNumData. La solution optimisée sera par la suite préparée sous la forme de fonction pour se retrouver dans le package econum"
+---
+
+```{r setup}
+SciViews::R
+library(readr)
+library(readxl)
+library(knitr)
+library(econum)
+```
+
+
+# Introduction 
+
+Lors du dosage de nutriments via l'autoanalyseur seal-AA3, les résultats peuvent être obtenus en format txt.
+
+```{r}
+# Selection d'un fichier parmi l'ensemble des fichiers de mise au point de la fonction 
+
+file_aa3 <- "../Data/180430AR1.txt"
+
+aa3 <- readr::read_delim(file = file_aa3, 
+                            delim = ";",
+                            col_names = FALSE,
+                            col_types = readr::cols( .default = "c"),
+                            locale = readr::locale(encoding = "LATIN1")) # particulary
+
+kable(aa3[0:20, ], align = "c")
+```
+
+On s'apperçoit rapidement que ce fichier peut être divisé en deux parties distinctes. La première a pour but de fournir un ensemble de données te et la seconde partie renvoit un tableau de données.
+
+Le préambule de ce document contient des informations importantes que l'on ne peut dissocier du tableau de données afin de comprendre les résultats.
+
+```{r}
+header <- readr::read_delim(file = file_aa3, 
+                            delim = ";",
+                            n_max = 13,
+                            col_names = FALSE,
+                            col_types = readr::cols( .default = "c"),
+                            locale = readr::locale(encoding = "LATIN1")) # particulary
+
+kable(header , align = "c")
+```
+
+
+
+```{r}
+raw_data <- readr::read_delim(file = file_aa3, 
+                            delim = ";",
+                            skip = 13,
+                            col_names = FALSE,
+                            col_types = readr::cols( .default = "c"),
+                            locale = readr::locale(encoding = "LATIN1"))
+kable(raw_data[1:6,], align = "c")
+```
+
+
+Cependant, malgré le préambule et le tableau de données des informations essentielles sont manquantes. Pour annoter l'échantillon qui est dosé par l'instrument, on peut encoder ces références dans la colonnes Sample ID. Le nombre de caractères encodables est limité. 
+
+Les infos manquantes sont : 
+
+- Le nom du projet / de l'expérience réalisée
+- L'heure de l'échantillonnage 
+- Le nom de l'expérimentateur (personne qui prélève l'échantillon)
+
+# Conversion du fichier 
+
+## Préparation du jeu de données
+
+Tout d'abord, il est intéressant d'encoder proprement les données 
+
+```{r}
+header <- readr::read_delim(file = file_aa3, 
+                            delim = ";",
+                            n_max = 13,
+                            col_names = FALSE,
+                            col_types = readr::cols( .default = "c"),
+                            locale = readr::locale(encoding = "LATIN1")) # particulary attention with the encoding system
+  # Extract nutrients that are analysed
+results <- as.character(header[9, c(10, 13, 16)])
+  
+  # Prepare names of variables for raw_data
+stds <- paste(results, "std", sep = "_")
+concs <- paste(results, "conc", sep = "_")
+vals <- paste(results, "values", sep = "_")
+  
+  # Change in data  NPinorganique.ANL in inorganique 
+header$X2[header$X2 == "NPinorganique.ANL" ] <- "inorga"
+header$X2[header$X2 == "NPorganique.ANL" ] <- "orga"
+  
+  # Method information
+channel_1 <- list(method  = as.character(header[9,10]), unit = as.character(header[10,10]), 
+                    base = as.character(header[11,10]) , gain = as.character(header[12,10]), 
+                    lamp = as.character(header[13,10]))
+  
+channel_2 <- list(method  = as.character(header[9,13]), unit = as.character(header[10,13]) , 
+                    base = as.character(header[11,13]) , gain = as.character(header[12,13]), 
+                    lamp = as.character(header[13,10]))
+  
+channel_3 <- list(method  = as.character(header[9,16]), unit = as.character(header[10,16]) , 
+                    base = as.character(header[11,16]) , gain = as.character(header[12,16]), 
+                    lamp = as.character(header[13,16]))
+  
+method <- list(channel_1 = channel_1, channel_2 = channel_2, channel_3 = channel_3) 
+
+project <- "nutrient"
+
+meta <- list(project = project, 
+             sample = sub("\\.RUN$", "", as.character(header[2, 2])), 
+             sample_date = as.POSIXlt(paste(as.character(header[3, 2]),
+                                              as.character(header[4, 2])),
+                                        format = "%d/%m/%Y %H:%M:%S"),
+               author = as.character(header[5, 2]),
+               date = as.POSIXct(as.character(header[3, 2]), format = "%d/%m/%Y"),
+               comment = as.character(header[6, 2]),
+               topic = as.character(header[1, 2]))
+  
+  # Extract raw data and remove a metadata 
+raw_data <- readr::read_delim(file = file_aa3, delim = ";", skip = 14,
+                         col_names = c("sample_id", "peak_number", "cup_number", "sample_type", "cup_group", 
+                                       "x_1", "x_2", "date_time", stds[1], concs[1],
+                                       vals[1], stds[2], concs[2], vals[2], stds[3],
+                                       concs[3], vals[3], "x_3", "x_4"), 
+                         col_types = readr::cols(sample_id = readr::col_character(),
+                                          peak_number = readr::col_integer(),
+                                          cup_number = readr::col_skip(),
+                                          sample_type = readr::col_character(),
+                                          cup_group = readr::col_skip(),
+                                          x_1 = readr::col_skip(),
+                                          x_2 = readr::col_skip(),
+                                          date_time = readr::col_datetime(format = "%d/%m/%Y %H:%M:%S"),
+                                          x_3 = readr::col_skip(),
+                                          x_4 = readr::col_skip(),
+                                          .default = readr::col_number()))
+
+rm(channel_1, channel_2, channel_3)
+
+kable(raw_data[1:15, ], align = "c")
+```
+
+
+Afin de pallier aux manquements cités ci-dessus, la solutions la plus simple serait de rédiger un second fichier sous la forme d'un template conçu à cet effet afin de venir copier l'ensemble des informations manquantes. Ce second document est d'une importance capitale afin de connaitre la provenance d'un échantillon. 
+
+
+```{r}
+file_aa3_xlsx <- "../Data/180430AR1.xlsx"
+add_data <- readxl::read_xlsx(file_aa3_xlsx, sheet = "data")
+kable(add_data[1:5,], align = "c")
+```
+
+La colonne Sample ID va donc pouvoir jouer le rôle de colonne similaire afin de coller les deux tableaux. La colonne Sample ID doit être courte et simple afin réduire le temps d'encodage dans le programme du Seal AA3. 
+
+```{r}
+raw_data <- dplyr::left_join(raw_data, add_data, by = "sample_id")
+
+attr(raw_data, "method") <- method
+attr(raw_data, "spec") <- NULL
+
+kable(raw_data, align = "c")
+```
+
+## Sauvegarde du jeu de données
+
+Il semble indispensable d'empecher la sauvegarde du fichier lorsque le fichier template et le fichier de l'autoanalyseur ne sont pas parfaitement similaire. Les deux fichiers doivent correspondre uniquement pour les échantillons, il est logique que les échantillons dosés pour mettre au point la courbe de calibration ne nécéssite pas l'ajout d'information. 
+
+```{r}
+samp <- raw_data[raw_data$sample_type == "SAMP", ] # samp contient des valeurs manquantes
+samp1 <- filter(samp, project != "NA") # samp1 ne contient plus de valeurs manquantes ce qui permet de tester la fonction
+i <- 1
+for(i in 1:nrow(samp1)){
+  is.na(samp1$project[i]) -> x
+  if(x == TRUE){
+    stop("l'ensemble des éléments de la colonne project n'est pas spécifié")} else{
+    i+1
+  }
+}
+# L'utilisation de samp bloque la fonction et renvoit le message d'erreur
+# L'utilisation de samp1 ne bloque pas la fonction
+```
+
+L'autonalyseur permet de doser à haut débit les nutriments. Un seul fichier provenant de l'autoanalyseur peut donc analyser des échantillons provenant de différentes expériences, avec différents expérimentateurs,... Plusieurs solutions s'offrent à nous afin d'organisation et de gérer la position des fichiers d'intérêts. 
+
+1. On dissocie chaque ligne du tableau que l'on envoie dans un dossier relatif à l'expérience (donc le projet dans notre cas) 
+
+2. On garde l'ensemble du fichier dans un dossier (par exemple: autoanalyseur). Il est dans ce cas indispensable de réaliser des fonctions capable de sélectionner parmi l'ensemble des fichiers les échantillons d'une expérience sur base des dates, du nom du project, ... et reconstruire un jeu de données.
+
+Chacune des solutions proposées a ses avantages et inconvénients. La première méthode induit un grand nombre de fichiers, la découpe du fichier de bases qui montre la suite des échantillons analysées ce qui peut renseigner sur d'éventuelle contamination.  La seconde méthode va fournir un fichier au nom peut évocateur (garder le nom fournit par l'autoanalyseur). Il faut par la suite coder les fonctions pour interroger les dossiers. Les résultats en lien avec une expérience ne se trouve pas dans un dossier comprenant l'ensemble des données en lien avec cette expérience mais dans un dossier commun pour toutes les expérineces avec l'autoanalyseur.
+
+Une solution hybride pourrait être la solution la plus adéquate. Un dossier s'appellant calibration_aa3 pourrait contenir l'ensemble des fichiers non découpés triés par date et ensuite chaque fichier pourrait être découpé et envoyé dans le dossier d'intérêt
+
+###  fichier non-dissocié
+
+```{r}
+nutrient <- new_econum_data(raw_data, metadata = meta, class = "aa3")
+class(nutrient)
+```
+On retrouve un essemble d'attribut avec ce jeu de données. 
+
+```{r}
+attr(nutrient, which = "metadata")
+attr(nutrient, which = "method")
+```
+On peut remarquer les incohérences suivantes : 
+
+- le *sample* reste le nom du batch passé dans l'autoanalyseur. Etant donnée que la sauvegarde du fichier se fait via la fonction `repos_save()` du package `econum`. Ce dernier sera dans le nom du fichier. Ce qui reste peu informatif
+
+- le *sample_date* est l'heure à laquelle le premier échantillon est analysé avec l'autoanalyseur. Cette information reste peu informative
+
+- l'*author* est peu  informatif étant donné que l'ensemble des analyses avec l'autoanalyseur sont réalisée par notre technicien. 
+
+```{r}
+# the local repository
+set_opt_econum("local_repos", "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data")
+repos_save(object = nutrient, project = project, remote = FALSE)
+```
+
+Le fichier se situe donc dans le dossier Data puis nutrient et enfin aa3.Ce dernier se nomme
+**180430AR1-inorga_2018-04-30_14.57.35_5AE65C80_aa3.RData**. On retrouve dans le nom du fichier les informations suivantes
+
+- sample : **180430AR1-inorga** (nom du batch et précision sur la méthode(organique ou inorganique))
+- sample_date : heure de la première mesure : **2018-04-30_14.57.35**
+- code unique basé sur les métadonnés : **5AE65C80**
+- class : classe du fichier, dans ce cas **AA3**
+
+### Fichier dissocié 
+
+```{r}
+raw_data %>.%
+  filter(., sample_type == "SAMP" & project != "NA") -> samp1
+
+set_opt_econum("local_repos", "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data")
+
+i <- 1
+for( i in 1:nrow(samp1)){
+  x <- samp1[i,]
+  attr(x = x , which = "calibration") <- sub("\\.RUN$", "", as.character(header[2, 2]))
+
+  metadata <-  list(project = x$project[1], 
+                    sample = paste(x$sample[1],as.character(header[1,2]), sep = "-"), 
+                    sample_date = as.POSIXct(x$sample_date[1]),
+                    author = x$authors[1], 
+                    date = as.POSIXct(x$date_time[1]),
+                    comment = x$comment[1], 
+                    topic = as.character(header[1,2]))
+
+  test <- new_econum_data(x, metadata = metadata, class = "aa3")
+  repos_save(object = test ,remote = FALSE)
+  i+1 
+}
+```
+
+Le batch se trouve maintenant dissocié afin de respecter les différents projets présents dans ce batch. On obtient le nom suivant : **A0_2018-04-24_09.00.00_5AE7381E_aa3.RData**
+
+On retrouve dans le nom du fichier les informations suivantes
+
+- sample : **180430AR1-inorga** (nom du batch et précision sur la méthode(organique ou inorganique))
+- sample_date : heure de la première mesure : **2018-04-30_14.57.35**
+- code unique basé sur les métadonnés : **5AE65C80**
+- class : classe du fichier, dans ce cas **AA3**
+
+L'ajout dans les attributs du nom du fichier de base va permettre de retrouver la provenance de la mesure.
+
+# Les fonctions
+
+```{r}
+source("../R/convert_data.R")
+```
+
