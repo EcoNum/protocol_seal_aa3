@@ -267,7 +267,10 @@ L'ajout dans les attributs du nom du fichier de base va permettre de retrouver l
 
 # Les fonctions
 
+Le fichier convert_data.R permet de convertir le fichier texte provennant de l'autoanalyseur.
+
 ```{r}
 source("../R/convert_data.R")
 ```
 
+Le fichier combine_aa3_data.R permet de regrouper l'ensemble des fichiers dissociés.

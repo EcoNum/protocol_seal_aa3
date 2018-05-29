@@ -125,10 +125,8 @@ conversion_aa3 <- function(file_aa3_txt, file_aa3_xlsx, project, topic = NULL, r
 }
 
 
-#nutrient <- conversion_aa3(file_aa3_txt = "Data/180425B.txt",file_aa3_xlsx = "Data/180425B.xlsx", project = "test",remote = FALSE, local = TRUE,local_repos = "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data", remote_repos = NA)
-
-# save calibration data
-
+#conversion_aa3(file_aa3_txt = "Data/raw/180425B.txt",file_aa3_xlsx = "Data/raw/180425B.xlsx", project = "test",remote = FALSE, local = TRUE,local_repos = "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data", remote_repos = NA)
+#nutrient <- EcoNumData_aa3
 
 uncoupled_data_aa3 <- function(nutrient, remote_repos, local_repos, remote, local){
   
@@ -141,11 +139,12 @@ uncoupled_data_aa3 <- function(nutrient, remote_repos, local_repos, remote, loca
   for( i in 1:nrow(samp)){
     x <- samp[i,]
     tp <- attr(nutrient, "metadata")$sample
+    tp1 <- unlist(strsplit(x = tp, split = "-"))
     topic <- attr(nutrient, "metadata")$topic
     attr(x = x , which = "calibration") <- attr(nutrient, "metadata")$sample
     
     metadata <-  list(project = x$project[1], 
-                      sample = x$sample[1], 
+                      sample = paste(x$sample[1], tp1[2] , sep = "-"), 
                       sample_date = as.POSIXct(x$sample_date[1]),
                       author = x$authors[1], 
                       date = as.POSIXct(x$date_time[1]),

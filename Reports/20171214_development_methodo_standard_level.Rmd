@@ -525,7 +525,7 @@ The same equations can be using for total nitrogen. **Attention, the molar mass 
 $$\frac{175 \ \mu g/L}{14 \ g/mol} = 12.5 \ \mu mol/L$$
 
 
-In the SSW, you can fin $1.86 \ \mu mol/L$ of $PO_4$ and $12.5 \ \mu mol/L$ of total nitrogen at most. It is impossible to know the importance of contaminants.
+In the SSW, you can find $1.86 \ \mu mol/L$ of $PO_4$ and $12.5 \ \mu mol/L$ of total nitrogen at most. It is impossible to know the importance of contaminants.
     
 
 
