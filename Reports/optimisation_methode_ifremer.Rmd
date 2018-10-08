@@ -1,0 +1,90 @@
+---
+title: "Optimisation vers les méthodes de dosages proposées par l'IFREMER"
+author: "Antoine Batigny & Engels Guyliann"
+output:
+  html_notebook: default
+  pdf_document: default
+bibliography: Bibliography/biblio.bib
+---
+
+```{r setup}
+SciViews::R
+library(chart)
+library(flow)
+library(econum)
+```
+
+
+# L'eau de lavage inter-échantillon
+
+Précédemment, les méthodes de dosage utilisées au laboratoire d'ECONUM employaient une eau SSW de lavage inter-échantillon. La méthode IFREMER utilise par contre de l'eau osmosée ultra-pure avec un échantillon en eau salée pour appliquer un facteur de correction par rapport à l'eau osmosée. 
+
+```{r}
+repos_load("../Data/calibration/aa3/180711B-inorga_2018-07-11_13.29.26_5B454880_aa3.RData")
+nutri1 <- EcoNumData_aa3
+nutri1 <- filter(nutri1, sample_type == "SAMP")
+nutri1$lavage <- "ssw"
+
+repos_load("../Data/calibration/aa3/180711C-inorga_2018-07-11_15.02.30_5B454880_aa3.RData")
+nutri2 <- EcoNumData_aa3
+nutri2 <- filter(nutri2, sample_type == "SAMP")
+nutri2$lavage <- "milliq"
+
+nutri <- bind_rows(nutri1, nutri2)
+rm(nutri1, nutri2)
+
+
+repos_load("../Data/calibration/aa3/180716A-inorga_2018-07-16_11.44.37_5B4BE000_aa3.RData")
+nutri3 <- EcoNumData_aa3
+nutri3 <- filter(nutri3, sample_type == "SAMP")
+nutri3$lavage <- "milliq"
+
+repos_load("../Data/calibration/aa3/180716B-inorga_2018-07-16_13.53.06_5B4BE000_aa3.RData")
+nutri4 <- EcoNumData_aa3
+nutri4 <- filter(nutri4, sample_type == "SAMP")
+nutri4$lavage <- "ssw"
+
+nutri2 <- bind_rows(nutri3, nutri4)
+rm(EcoNumData_aa3, nutri3, nutri4)
+```
+
+## PO4
+
+Le dosage des mêmes échantillons avec une eau de lavage inter-échantillon milliQ ou SSW indique des concentrations similaires.
+
+```{r}
+chart(nutri2, PO4_conc ~ sample %col=% lavage ) +
+  geom_point(position=position_dodge(width = 0.9)) +
+  labs(x = "Echantillon", y = "Ions phosphate [µmol/L]", color = "Eau de \n lavage") 
+```
+
+## NO3
+
+
+
+Le dosage des mêmes échantillons avec une eau de lavage inter-échantillon milliQ ou SSW indique des concentrations différentes. Il semble que l'eau milliQ soit plus instable que la SSW.
+
+```{r}
+chart(nutri2, NO3_conc ~ sample |lavage ) +
+  geom_point()
+
+chart(nutri2, NO3_conc ~ sample %col=% lavage ) +
+  geom_point(position=position_dodge(width = 0.9)) +
+  labs(x = "Echantillon", y = "Ions nitrate & nitrite [µmol/L]", color = "Eau de \n lavage") 
+```
+
+## NH4
+
+Le dosage des mêmes échantillons avec une eau de lavage inter-échantillon milliQ ou SSW indique des concentrations très différentes. Il semble que l'eau milliQ contiennent un teneur en NH4 non négligeable.
+
+```{r}
+chart(nutri2, NH4_conc ~ sample %col=% lavage ) +
+  geom_point(position=position_dodge(width = 0.9)) +
+  labs(x = "Echantillon", y = "Ions ammonium [µmol/L]", color = "Eau de \n lavage") 
+```
+
+
+
+# Conclusion et perspectives
+
+Les concentrations en Azote (natrite, nitrite, ammonium) semblent plus sensibles à la modification d'eau de lavage. Cependant, des expériences complémentaires sont nécessaires. 

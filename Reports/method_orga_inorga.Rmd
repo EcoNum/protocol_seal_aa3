@@ -1,0 +1,34 @@
+---
+title: "Expérience de la comparaison de la réponse entre méthode organique et inorganique"
+output: html_notebook
+author: "Antoine & Guyliann"
+---
+
+Pour cette expérience il faut préparer les solutions suivantes
+
+- $1, 5, 10 \mu mol/L$ de la solution standard pour étalonner le Ntot et le Ptot
+
+- $1, 5, 10 \mu mol/L$ de la solution de $KNO_3$ (Voir méthode de préparation de standard Ntot)
+
+- $1, 5, 10 \mu mol/L$ de la solution de $POD$ (Voir méthode de préparation de standard Ptot, employé actuellement)
+
+- $1, 5, 10 \mu mol/L$ de la solution standard pour étalonner le $PO_4$, $NO_3$, $NH_4$ 
+
+- $1, 5, 10 \mu mol/L$ de la solution de $NaNO_3$ et $KH_2PO_4$ (Voir méthode de préparation de standard $NO_3$, $PO_4$)
+
+- $1, 5, 10 \mu mol/L$ de la solution standard pour étalonner le $NO_2$
+
+- $1, 5, 10 \mu mol/L$ de la solution standard pour étalonner le urée ($CH_4N_20$)
+
+La procédures sont les procédures habituelles avec la préparation de la solution mère avec de l'eau ultra pure. Les solutions filles sont préparés ensuite par dilution avec de l'$eau_{ssw}$.
+
+Les solutions citées ci-dessus sont à analyser avec la méthode A (inorganique, $PO_4$, $NO_3$, $NH_4$) et avec la méthode B (organique, Ntot, Ptot, $NO_2$)
+
+## Azote total 
+
+Deux étapes critiques dans le dosage de l'azote total est la dégradation et la réduction des nitrates en nitrites. Les échantillons en $NO_2$ et $KNO_3$ ou $NaNO_3$ vont renseigner sur l'étape de réduction. Le $CH_4N_20$ et $KNO_3$ ou $NaNO_3$ vont renseigner sur la digestion. 
+
+## Phosphore total
+
+L'étape critique d'analyse se situe dans l'étape de dégradation de la matière organique. Les échantillons en $KH_2PO_4$ et POD vont renseigner sur cette étape.
+

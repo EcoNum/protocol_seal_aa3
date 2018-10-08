@@ -1,0 +1,484 @@
+---
+title: "Développement de la méthode"
+subtitle: "Version française"
+date: "2018-05-30"
+author: "Antoine Batigny & Guyliann Engels"
+abstract: "Ce document a pour objectif de mettre en avant les multiples analyses réalisées avec l'autoanalyseur seal-AA3 "
+output: 
+  html_notebook: 
+    fig_caption: yes
+    highlight: pygments
+    number_sections: yes
+    toc_flot: yes
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+SciViews::R
+library(econum)
+library(knitr)
+library(kableExtra)
+```
+
+# Introduction
+
+## Prélèvement  
+
+Pour les analyses des nutiments minéraux, on prélève directement dans dans le flacon de prélèvement. Par contre, l'échantillonnage prélevé se fait en 2 étapes car il faut filtrer l'échantillon avant de l'analyser. Il est conseillé de filtrer l'eau avec un filtre de $10 \mu m$. Les prélèvements des éléments minéraux peuvent être stocké dans des échantillons en plastique. Par contre, les récipient en verre sont à privilégier les éléments organiques. Il est conseillé d'échantillonner 100ml alors que 1 ml est employé pour l'analyse.
+
+Les échantillons qui ne peuvent être dosé le jour même doivent être congelé. Lors de la préparation des échantillons pour analyse des règles strictes doivent être suivie.
+
+Durant la décongélation :
+
+- maintenir les flacons bouchés et debout
+- éviter toute surchauffe (laisser décongeler à température ambiante, placer au réfrigirateur la veuille suivi d'un période à température ambiante)
+- protéger de la lumière
+- agiter régulièrement
+
+Une fois décongélé :
+
+- maintenir les échantillons au frais (10°C)et à l'abris de la lumière
+    + réduit la dégradation biologique
+    + n'affecte pas l'analyse
+
+
+## Dosage des nitrites
+
+Le dosage des nitrites repose sur la réaction de Griess (adapté à l'eau de mer Benschneider & Robinson). Les nitrites réagissent avec sulfanilamide puis avec le N-naphtyl-éthylènediamie en milieu acide.
+
+La limite de détection est de $1 nmol/L$
+
+## Dosage des nitrates
+
+Le dosage des nitrates se fait via la réduction en nitrite sur un milieu hétérogène par contact au cadmium. Cette méthode dose donc la somme des nitrites et des nitrates. De plus, lors de la réduction des vapeurs d'ammoniac.
+
+La limite de détection est de $10\mumol/L$
+
+## Dosage des ammoniums
+
+En milieu basique, la réaction de berthelot va permettre de doser à 630 nm. 
+
+Le dosage va mesurer le $NH_3$ et le $NH_4^+$
+
+## Dosage des phosphates
+
+Le dosage se base sur la méthode de Murphy & Riley 1962. En milieu acide, le phosphate réagit avec molybdate en présence d'antimoine afin de former le complexe phosphomolybdique qui est réduit par acide ascorbique.
+
+La limite de détection est de $1 nmol/L$
+
+## Dosage de l'azote total dissous
+
+L'azote total dissous comprend l'ensemble des formes azotées minérales et organiques à l'exception du $N_2$ (particule dans de l'eau filtrée avec des mailles de $0.5 \mu m$). Les molécules organiques dissoutes sont peu affectée par la dégradation bactérienne.  L'azote total dissous peut de ce fait donner une fausse information de l'azote disponible. 
+
+$$NID (azote \ inorganique \ dissous) = nitrate + nitrite + ammonium$$
+
+$$NOD (azote \ organique \ dissous)$$
+
+$$NTD (azote \ total \ dissous) = NID + NOD$$
+
+Le NOD est converti afin d'être doser comme des composés inorganiques. 
+
+La conservation des échantillons se fait par -25°C.
+
+## Dosage du phosphore total dissous 
+
+Les molécules organiques dissoutes ne sont pas entièrement affectée par la dégradation bactérienne.  Le phosphore total dissous peut de ce fait donner une fausse information de phosphore disponible. 
+
+La conservation des échantillons se fait par -25°C.
+$$PID = \ \sim phosphate $$
+
+$$POD (phospore \ organique \ dissous)$$
+
+$$PTD (phosphore \ total \ dissous) = PID + POD$$
+# Expérience de mise au point
+
+## Reproductibilité 1 : Décembre 2017
+
+### Protocole
+
+L'une des premières questions  est de savoir si les analyses sont reproductibles. Pour ce faire, le même échantillons est dosé 10 fois.
+
+### Ions phosphates
+
+```{r}
+data <- read.table(file = "../data/raw/171215A.txt", sep = ";", header = TRUE) # import dataset
+
+# check the method, line 8 , two possibility : method A (PO4, NO3, NH4) or method B (Ptot, Ntot, NO2)
+
+# skip first line
+meth_a <- data[ -c(1:13), ]
+remove(data)
+# rename variable for more simplicity
+meth_a %>%rename(echant = ANAL, type  = X.1, date_analyse = X.5, 
+                PO4_theo = X.6, PO4_conc = X.7, PO4_val = X.8,  
+                NO3_theo = X.9, NO3_conc = X.10, NO3_val = X.11,
+                NH4_theo = X.12, NH4_conc = X.13, NH4_val = X.14)%>%
+  select(c(1,4,8:17))-> meth_a
+
+# special attention for the type of variables and change if necessary
+meth_a %>% mutate(echant = as.character(echant),
+                  type = as.character(type),
+                  PO4_theo = as.numeric( as.character(PO4_theo)),
+                  PO4_conc = as.numeric( as.character(PO4_conc)),
+                  PO4_val = as.numeric( as.character(PO4_val)),
+                  NO3_theo = as.numeric( as.character(NO3_theo)),
+                  NO3_conc = as.numeric( as.character(NO3_conc)),
+                  NO3_val = as.numeric( as.character(NO3_val)),
+                  NH4_theo = as.numeric( as.character(NH4_theo)),
+                  NH4_conc = as.numeric( as.character(NH4_conc)),
+                  NH4_val = as.numeric( as.character(NH4_val))) -> meth_a
+
+meth_a$date_analyse <- as.POSIXlt(meth_a$date_analyse, format = "%d/%m/%Y %H:%M:%S")
+meth_a$date_analyse <- as.POSIXct(meth_a$date_analyse)
+meth_a <- meth_a[meth_a$type == "SAMP", ]
+meth_a <- meth_a[meth_a$echant != "Milliq", ]
+meth_a$echant <- factor(x = meth_a$echant, ordered = TRUE, levels = c( "H2O Stareso", "SSW", "cal0.05", "cal0.1", "cal0.2", "cal1", "cal2", "cal5", "Cal10"), labels = c("Eau vieillie", "SSW", "0.05", "0.1", "0.2", "1", "2", "5", "10"))
+```
+
+Le graphique ci-dessus permet de mettre en avant que les analyses semblent graphiquement similaires à l'exception de quelques points.
+
+```{r graph_po4_repoductibilite, fig.cap= "Boite de dispersion montrant la variation de la concentration en ion phosphate (n = 10)."}
+chart(meth_a, formula = PO4_conc ~ echant) +
+  geom_boxplot() +
+  labs( y = " Concentration en ions phosphates [µmol/L]", x = " ")
+```
+
+Après avoir éliminé, les valeurs extrêmes observées graphiquement, le tableau ci-dessous renseigne sur le coefficient de variation.
+
+```{r}
+.  <- meth_a[-c(4, 5, 19, 20), ]
+. %>.%
+  group_by(., echant) %>.%
+  summarise(., mean = mean(PO4_conc), "sd" = sd(PO4_conc), "cv" = abs((sd(PO4_conc) /  mean(PO4_conc))*100)) -> .
+kable(., format = "html", col.names = c("Echantillon", "Moyenne", "Ecart-type", "Coefficient de variation"), caption = "Variation de la concentration en ions phosphates [µmol/L] (n = 10)") %>.%
+  kable_styling(., bootstrap_options = "striped", position = "float_right")
+```
+Plus la valeur à doser est faible, plus le coefficient de variation augmente. 
+
+### Ions nitrates
+
+```{r graph_no3_repoductibilite, fig.cap= "Boite de dispersion montrant la variation de la concentration en ion nitrate (n = 10)."}
+chart(meth_a, formula = NO3_conc ~ echant) +
+  geom_boxplot() +
+  labs( y = " Concentration en ions nitrates [µmol/L]", x = " ")
+```
+
+Les valeurs éliminées pour les ions phosphates ne sont pas les mêmes que pour les ions nitrates. 
+
+```{r}
+meth_a %>.%
+  group_by(., echant) %>.%
+  summarise(., mean = mean(NO3_conc), "sd" = sd(NO3_conc), "cv" = abs((sd(NO3_conc) /  mean(NO3_conc))*100)) -> .
+kable(., format = "html", col.names = c("Echantillon", "Moyenne", "Ecart-type", "Coefficient de variation"), caption = "Variation de la concentration en ions nitrates [µmol/L] (n = 10)") %>.%
+  kable_styling(., bootstrap_options = "striped", position = "float_right")
+```
+A nouveau, les concentrations les plus faibles ont des coefficient de variation plus important. 
+
+### Ions ammoniums
+
+```{r graph_nh4_repoductibilite, fig.cap= "Boite de dispersion montrant la variation de la concentration en ion phosphate (n = 10)."}
+chart(meth_a, formula = NH4_conc ~ echant) +
+  geom_boxplot() +
+  labs( y = "Concentration en ions ammoniums [µmol/L]", x = " ")
+```
+
+
+
+```{r}
+meth_a %>.%
+  group_by(., echant) %>.%
+  summarise(., mean = mean(NH4_conc), "sd" = sd(NH4_conc), "cv" = abs((sd(NH4_conc) /  mean(NH4_conc))*100)) -> .
+kable(., format = "html", col.names = c("Echantillon", "Moyenne", "Ecart-type", "Coefficient de variation"), caption = "Variation de la concentration en ions ammoniums [µmol/L] (n = 10)") %>.%
+  kable_styling(., bootstrap_options = "striped", position = "float_right")
+```
+
+Le dosage des ions ammoniums n'ont pas fonctionné comme le montre les valeurs nulles dans le tableau ci-dessus. Cependant, la courbe de calibration même pour les valeurs nulles ont obtenu une valeur d'absorbance alors que dans notre cas aucune valeurs n'a été mesuré. 
+
+
+```{r}
+meth <- read.table(file = "../data/raw/171214A.txt", sep = ";", header = TRUE) # import dataset
+
+# check the method, line 8 , two possibility : method A (PO4, NO3, NH4) or method B (Ptot, Ntot, NO2)
+
+
+# skip first line
+meth_b <- meth[ -c(1:13), ]
+remove(meth)
+# rename variable for more simplicity
+
+meth_b %>%rename(echant = ANAL, type  = X.1, date_analyse = X.5, 
+                Ptot_theo = X.6, Ptot_conc = X.7, Ptot_val = X.8,  
+                Ntot_theo = X.9, Ntot_conc = X.10, Ntot_val = X.11,
+                NO2_theo = X.12, NO2_conc = X.13, NO2_val = X.14)%>%
+  select(c(1,4,8:17))-> meth_b
+
+# special attention for the type of variables and change if necessary
+meth_b %>% mutate(echant = as.character(echant),
+                  type = as.character(type),
+                  Ptot_theo = as.numeric(as.character(Ptot_theo)),
+                  Ptot_conc = as.numeric(as.character(Ptot_conc)),
+                  Ptot_val = as.numeric(as.character(Ptot_val)),
+                  Ntot_theo = as.numeric(as.character(Ntot_theo)),
+                  Ntot_conc = as.numeric(as.character(Ntot_conc)),
+                  Ntot_val = as.numeric(as.character(Ntot_val)),
+                  NO2_theo = as.numeric(as.character(NO2_theo)),
+                  NO2_conc = as.numeric(as.character(NO2_conc)),
+                  NO2_val = as.numeric(as.character(NO2_val))) -> meth_b
+
+meth_b$date_analyse <- as.POSIXlt(meth_b$date_analyse, format = "%d/%m/%Y %H:%M:%S")
+meth_b$date_analyse <- as.POSIXct(meth_b$date_analyse)
+
+meth_b <- meth_b[meth_b$type == "SAMP", ]
+meth_b <- meth_b[meth_b$echant != "Milliq_____________", ]
+meth_b <- meth_b[meth_b$echant != "Milliq", ]
+
+
+meth_b$echant <- factor(x = meth_b$echant, ordered = TRUE, levels = c( "H2O Stareso", "ssw", "cal0.05 NO2", "cal1 NO2", "cal10 NO2","cal0.05 N+P", "cal1 N+P", "cal30 N+P"), labels = c("Eau vieillie", "SSW", "0.05 NO2", "1 NO2", "10 NO2", "0.05 NP","1 NP", "30 NP"))
+```
+
+### Phosphore total
+
+```{r graph_ptot_repoductibilite, fig.cap= "Boite de dispersion montrant la variation de la concentration en ion nitrate (n = 10)."}
+chart(meth_b, formula = Ptot_conc ~ echant) +
+  geom_boxplot() +
+  labs( y = " Concentration en \n phosphore total [µmol/L]", x = " ")
+```
+
+
+```{r}
+meth_b %>.%
+  group_by(., echant) %>.%
+  summarise(., mean = mean(Ptot_conc), "sd" = sd(Ptot_conc), "cv" = abs((sd(Ptot_conc) /  mean(Ptot_conc))*100)) -> .
+kable(., format = "html", col.names = c("Echantillon", "Moyenne", "Ecart-type", "Coefficient de variation"), caption = "Variation de la concentration en phosphore total [µmol/L] (n = 10)") %>.%
+  kable_styling(., bootstrap_options = "striped", position = "float_right")
+```
+
+Les coefficients de variation sont très importants à l'exception de l'échantillon de 30 $30 \mu mol/L$
+
+### Azote total
+
+```{r graph_ntot_repoductibilite, fig.cap= "Boite de dispersion montrant la variation de la concentration en azote total (n = 10)."}
+chart(meth_b, formula = Ntot_conc ~ echant) +
+  geom_boxplot() +
+  labs( y = " Concentration en \n azote total [µmol/L]", x = " ")
+```
+
+Graphiquement, une particularité est visible. L'azote total est censé doser logiquement le calibrant de $10 \mu mol/L$ de $NO_2$ alors qu'à peine plus de la moitié semble détecté.
+
+
+```{r}
+meth_b <- meth_b[ -c(36), ]
+meth_b %>.%
+  group_by(., echant) %>.%
+  summarise(., mean = mean(Ntot_conc), "sd" = sd(Ntot_conc), "cv" = abs((sd(Ntot_conc) /  mean(Ntot_conc))*100)) -> .
+kable(., format = "html", col.names = c("Echantillon", "Moyenne", "Ecart-type", "Coefficient de variation"), caption = "Variation de la concentration en azote total [µmol/L] (n = 10)") %>.%
+  kable_styling(., bootstrap_options = "striped", position = "float_right")
+```
+
+
+### Ions nitrites
+
+```{r graph_no2_repoductibilite, fig.cap= "Boite de dispersion montrant la variation de la concentration en ions nitrites (n = 10)."}
+chart(meth_b, formula = NO2_conc ~ echant) +
+  geom_boxplot() +
+  labs( y = " Concentration en ions nitrite [µmol/L]", x = " ")
+```
+
+
+```{r}
+meth_b %>.%
+  group_by(., echant) %>.%
+  summarise(., mean = mean(NO2_conc), "sd" = sd(NO2_conc), "cv" = abs((sd(NO2_conc) /  mean(NO2_conc))*100)) -> .
+kable(., format = "html", col.names = c("Echantillon", "Moyenne", "Ecart-type", "Coefficient de variation"), caption = "Variation de la concentration en ions nitrites [µmol/L] (n = 10)") %>.%
+  kable_styling(., bootstrap_options = "striped", position = "float_right")
+```
+
+### Conclusion et perspectives
+
+L'interrogation la plus importante sur cette expérience est le dosage moitié moins important du $NO_2$ lors du dosage de l'azote total.
+
+## Dégradation au cours du temps 1 
+
+### Protocole
+
+L'un des éléments influencant la précision de la mesure est le temps. Pour ce faire, des échantillons sont dosé à plusieurs reprise au cours du temps (sur un délais de 45 minutes) afin d'observer cette dégradation.
+
+```{r}
+data <- read.table(file = "../data/raw/171124B.txt", sep = ";", header = TRUE) # import dataset
+
+# check the method, line 8 , two possibility : method A (PO4, NO3, NH4) or method B (Ptot, Ntot, NO2)
+
+# skip first line
+meth_a <- data[ -c(1:13), ]
+remove(data)
+# rename variable for more simplicity
+meth_a %>%rename(echant = ANAL, type  = X.1, date_analyse = X.5, 
+                PO4_theo = X.6, PO4_conc = X.7, PO4_val = X.8,  
+                NO3_theo = X.9, NO3_conc = X.10, NO3_val = X.11,
+                NH4_theo = X.12, NH4_conc = X.13, NH4_val = X.14)%>%
+  select(c(1,4,8:17))-> meth_a
+
+# special attention for the type of variables and change if necessary
+meth_a %>% mutate(echant = as.character(echant),
+                  type = as.character(type),
+                  PO4_theo = as.numeric( as.character(PO4_theo)),
+                  PO4_conc = as.numeric( as.character(PO4_conc)),
+                  PO4_val = as.numeric( as.character(PO4_val)),
+                  NO3_theo = as.numeric( as.character(NO3_theo)),
+                  NO3_conc = as.numeric( as.character(NO3_conc)),
+                  NO3_val = as.numeric( as.character(NO3_val)),
+                  NH4_theo = as.numeric( as.character(NH4_theo)),
+                  NH4_conc = as.numeric( as.character(NH4_conc)),
+                  NH4_val = as.numeric( as.character(NH4_val))) -> meth_a
+
+meth_a$date_analyse <- as.POSIXlt(meth_a$date_analyse, format = "%d/%m/%Y %H:%M:%S")
+meth_a$date_analyse <- as.POSIXct(meth_a$date_analyse)
+meth_a <- meth_a[meth_a$type == "SAMP", ]
+
+unique(meth_a$echant)
+meth_a$echant <- as.factor(meth_a$echant)
+```
+
+### Ions phosphates
+
+```{r}
+chart(meth_a, formula = PO4_conc ~ date_analyse %col=% echant) +
+  geom_point() +
+  geom_line()
+```
+### Ions nitrates
+
+```{r}
+chart(meth_a, formula = NO3_conc ~ date_analyse %col=% echant) +
+  geom_point() +
+  geom_line()
+```
+### Ions ammoniums
+
+```{r}
+chart(meth_a, formula = NH4_conc ~ date_analyse %col=% echant) +
+  geom_point() +
+  geom_line()
+```
+
+Le graphique ci-dessus montre que les ions ammoniums sont plus instables que les ions nitrates et phosphates. 
+
+### Conclusion et perspectives
+
+## Dosage de l'azote et du phosphore total : juin 2018
+
+### Protocole
+
+Les expériences précédentes ont montrés que les calibrants $NO_2$ ne sont pas entièrement détecté lors de dosage de l'azote total. Il en est de même lors du dosage du phosphore total par rapport aux calibrants $PO_4$. 
+
+## rr
+
+```{r}
+repos_load( "../Data/calibration/aa3/180531A-orga_2018-05-31_13.52.40_5B0F3B00_aa3.RData")
+nutri <- EcoNumData_aa3
+nutri %>.%
+  separate(., sample, c("samp", "replicat", "type"), remove = FALSE) %>.%
+  unite(., col = "samp_type", samp, type, sep = "-") -> nutri
+nutri1 <- filter(nutri, sample_type == "SAMP")
+nutri1$Ptot_theo <- c(NA, 10, 5, 1, NA,
+                      NA, 0, 0, 0, NA,
+                      NA, 10, 5, 1, NA,
+                      NA, 0, 0, 0, NA,
+                      NA, 10, 5, 1, NA,
+                      NA, 0, 0, 0, NA)
+
+nutri1$Ntot_theo <- c(NA, 20, 10, 2, NA,
+                      NA, 10, 5, 1, NA,
+                      NA, 20, 10, 2, NA,
+                      NA, 10, 5, 1, NA,
+                      NA, 20, 10, 2, NA,
+                      NA, 10, 5, 1, NA)
+nutri1$samp_type <- factor(x = nutri1$samp_type, 
+                           levels = c("cal01-inorga", "cal05-inorga", "cal10-inorga",
+                                      "cal01-noorga", "cal05-noorga", "cal10-noorga",
+                                      "A0-NA", "B0-NA"), 
+                           labels = c("NO3_NO2_PO4-1", "NO3_NO2_PO4-5", "NO3_NO2_PO4-10",
+                                      "NO2-1", "NO2-5", "NO2-10",
+                                      "A0", "B0"))
+nutri1$Ptot_diff <- (nutri1$Ptot_conc / nutri1$Ptot_theo)*100
+nutri1$Ntot_diff <- (nutri1$Ntot_conc / nutri1$Ntot_theo)*100
+```
+
+```{r}
+chart(nutri1, formula = Ptot_conc ~ samp_type ) +
+  geom_point() +
+  coord_flip() +
+  geom_point(nutri1, mapping= aes(y = Ptot_theo, x = samp_type), color = "red")
+
+chart(nutri1, formula = Ntot_conc ~ samp_type ) +
+  geom_point() +
+  coord_flip() +
+  geom_point(nutri1, mapping= aes(y = Ntot_theo, x = samp_type), color = "red")
+```
+
+### Phosphore total
+
+```{r}
+PO4 <- filter(nutri1, samp_type == "NO3_NO2_PO4-1" | samp_type == "NO3_NO2_PO4-5" | samp_type == "NO3_NO2_PO4-10")
+a <- chart(PO4, formula = Ptot_conc ~ Ptot_theo) +
+  geom_point() +
+  labs(x = "Ptot attendu", y = "Ptot dosé" ) +
+  scale_y_continuous(limits = c(0, 10))+
+  scale_x_continuous(limits = c(0, 10))
+
+b <- chart(PO4, formula = Ptot_diff ~ Ptot_theo ) +
+  geom_point() +
+  labs(x = "Ptot_attendu" , y = "Ptot dosé/attendu" ) +
+  scale_y_continuous(limits = c(0, 110))+
+  scale_x_continuous(limits = c(0, 10))
+ggpubr::ggarrange(a, b, ncol = 2)
+```
+
+On observe que plus l'échantillon est important plus l'erreur du le dosage augmente.
+
+### Azote total
+
+```{r}
+NO <- filter(nutri1, samp_type == "NO3_NO2_PO4-1" | samp_type == "NO3_NO2_PO4-5" | samp_type == "NO3_NO2_PO4-10")
+a <- chart(NO, formula = Ntot_conc ~ Ntot_theo ) +
+  geom_point() +
+  labs(x = "Ntot attendu", y = "Ntot dosé" )+
+  scale_y_continuous(limits = c(0, 20)) +
+  scale_x_continuous(limits = c(0, 20))
+
+b <- chart(NO, formula = Ntot_diff ~ Ntot_theo ) +
+  geom_point() +
+  labs(x = "Ntot_attendu" , y = "Ntot dosé/attendu") +
+  scale_y_continuous(limits = c(0, 100))+
+  scale_x_continuous(limits = c(0, 20))
+
+NO2 <- filter(nutri1, samp_type == "NO2-1" | samp_type == "NO2-5" | samp_type == "NO2-10")
+c <- chart(NO2, formula = Ntot_conc ~ Ntot_theo ) +
+  geom_point() +
+  labs(x = "Ntot attendu", y = "Ntot dosé" )+
+  scale_y_continuous(limits = c(0, 10))+
+  scale_x_continuous(limits = c(0, 10))
+
+d <- chart(NO2, formula = Ntot_diff ~ Ntot_theo ) +
+  geom_point() +
+  labs(x = "Ntot_attendu" , y = "Ntot dosé/attendu") +
+  scale_y_continuous(limits = c(0, 100))+
+  scale_x_continuous(limits = c(0, 10))
+
+ggpubr::ggarrange(a, b, c, d, ncol = 2, nrow = 2, labels = "auto")
+```
+
+
+
+# Utilisation des méthodes Ifremer 
+
+Les méthodes ifremer sont des versions optimisées des méthodes SEAL plus anciennes et génériques. 
+Les eaux peu salées engendrent une trainée du signal avec un effet de carry-over. 
+
+## Prélèvements, échantillonnage, filtration
+
+On conseille d'employer une pré-filtration avec un filtre de $10\mu m$ afin d'obtenir un volume de $100ml$ (bien que trop important pour une analyse, le volume peut réduire l'effet de contamination. Les flacons d'échantillonnage en plastiques sont suffisants pour les éléments inorganiques. Il est préférable d'employer des flacons en verre pour la matière organique dissoute. 
+
+Les flacons doivent être rincé à l'$HCl$ et les flacons en verre doivent être pyrolysés à $500 C°$
+
+## Les particularité 

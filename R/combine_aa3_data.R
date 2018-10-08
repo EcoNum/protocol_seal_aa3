@@ -4,6 +4,7 @@ SciViews::R
 library(econum)
 # Version 2 avec des organiques et inorganiques 
 # direction <- "Data/mesocosm_monitoring/aa3"
+# direction <- "Data/coral_salinity002/aa3"
 # create a list with all names 
 all_data <- dir(direction, full.names = TRUE)
 t <- grep(x = all_data, pattern = "inorga")
@@ -41,4 +42,6 @@ remove(EcoNumData_aa3, f, nutri)
 
 nutri <- left_join(inorga, orga, by = c("sample_id", "sample_type", "project", "sample", "sample_date", "authors" ), suffix = c("_inorga", "_orga"))
 nutri <- select(nutri, - PO4_std,  - NO3_std, - NH4_std, - Ptot_std, - Ntot_std, - NO2_std)
+nutri <- separate(nutri, sample, c("position", "cycle", " our"))
 
+rm(inorga, orga)
