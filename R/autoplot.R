@@ -197,4 +197,179 @@ calb_aa3 <- function(x){
 #calb_aa3(EcoNumData_AA3.a)
 #calb_aa3(EcoNumData_AA3.b)
 
+### update 2018-10-08
+reposLoad("Data/calibration/aa3/180531A-orga_2018-05-31_13.52.40_5B0F3B00_aa3.RData")
+# reposLoad("Data/calibration/aa3/180613E-inorga_2018-06-13_16.15.10_5B205E80_aa3.RData")
+library(dplyr)
+library(flow)
+
+# Fonction calb2_aa3
+calb2_aa3 <- function(x, channel_all = TRUE){
+  
+  # Fonction calb_linear_model
+  calb_linear_model <- function(x){
+    lm <- lm(x[,2] ~ x[,1])
+    return(data.frame(intercept = lm$coefficients[1], 
+                      values = lm$coefficients[2], 
+                      r_squared = round(summary(lm)$r.squared,digits = 4), 
+                      n = length(x[,1]),
+                      row.names = attr(x = x, which = "method")[[i]]$method))
+  }
+  
+  # Paramètres
+  param <- list(method_1 = list(channel = 1, col = c(5,7)),
+                method_2 = list(channel = 2, col = c(8,10)),
+                method_3 = list(channel = 3, col = c(11,13)))
+  
+  # CALB Data
+  x %>.%
+    filter(., sample_type == "CALB") -> samp
+  
+  # Lists
+  graph_list <- list()
+  calb_lm_list <- list()
+  
+  for (i in seq_along(param)){
+    samp %>.%
+      select(., param[[i]]$col) %>.%
+      na.omit(.) -> calb
+    
+    # method
+    attr(x = x, which = "method")[[i]]$method -> m_1
+    
+    # linear model
+    calb_lm_list[[i]] <- calb_linear_model(calb)
+    names(calb_lm_list)[i]<- m_1
+    
+    # Equation 
+    # eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, 
+    #                  list(a = format(calb_lm_list[[i]]$intercept, digits = 2), 
+    #                       b = format(calb_lm_list[[i]]$values, digits = 2), 
+    #                       r2 = format(calb_lm_list[[i]]$r_squared, digits = 3)))
+    # eq <- as.character(as.expression(eq))
+    eq <- paste0("(y = ", format(calb_lm_list[[i]]$intercept, digits = 2), " + ", format(calb_lm_list[[i]]$values, digits = 2), " * x ; R squared = ", 
+                 format(calb_lm_list[[i]]$r_squared, digits = 3), " ; n = ", calb_lm_list[[i]]$n, ")" )
+     
+    # graph
+    graph_list[[i]] <- ggplot(calb, aes(calb[,1], calb[,2])) +
+      geom_point() +
+      labs( x = "Standard", y = "Values") +
+      ggtitle(paste0(m_1," - ", eq)) +
+      # geom_text(x = 2.5, y = 60000, label = eq, parse = TRUE) +
+      geom_smooth(method = "lm")
+
+    names(graph_list)[i]<- m_1
+    
+  }
+  
+  bind_rows(calb_lm_list) %>.% 
+     mutate(.,method = names(calb_lm_list)) %>.%
+     select(.,method, intercept, values, r_squared, n) -> lm_tab
+   
+  ## Template for tab 
+  mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params = list(cex = 0.7)),
+    colhead = list(fg_params = list(cex = 0.7)),
+    rowhead = list(fg_params = list(cex = 0.7)))
+  
+  ## Create tab with lm's coefficients 
+  d <- gridExtra::tableGrob(lm_tab, theme = mytheme)
+  
+  # combine plot
+  ggarrange(graph_list[[1]], graph_list[[2]], graph_list[[3]], d, labels = c("","","","Linear model"), 
+            font.label = list(size = 14, face = "bold"), align = "hv",
+            label.x = c(0.5, 0.5, 0.5, 0.2))
+  
+} # FIN DE LA FONCTION calb2_aa3
+
+### update 2018-10-09
+reposLoad("Data/calibration/aa3/180531A-orga_2018-05-31_13.52.40_5B0F3B00_aa3.RData")
+# reposLoad("Data/calibration/aa3/180613E-inorga_2018-06-13_16.15.10_5B205E80_aa3.RData")
+
+library(dplyr)
+library(flow)
+
+# Fonction calb2_aa3
+calb2_aa3 <- function(x){
+  
+  # Fonction calb_linear_model
+  calb_linear_model <- function(x){
+    lmod<- lm(x[,2] ~ x[,1])
+    return(data.frame(intercept = lmod$coefficients[1], 
+                      values = lmod$coefficients[2], 
+                      r_squared = round(summary(lmod)$r.squared,digits = 4), 
+                      n = length(x[,1]),
+                      row.names = attr(x = x, which = "method")[[i]]$method))
+  }
+  
+  # Paramètres
+  param <- list(method_1 = list(channel = 1, col = c(5,7)),
+                method_2 = list(channel = 2, col = c(8,10)),
+                method_3 = list(channel = 3, col = c(11,13)))
+  
+  # Lists
+  graph_list <- list()
+  calb_lm_list <- list()
+  
+  for (i in seq_along(param)){
+    # Samp Data
+    x %>.%
+      select(., date_time, sample_type, param[[i]]$col) -> samp
+    
+    # method
+    attr(x = x, which = "method")[[i]]$method -> met
+    
+    # all_values plot
+    all_values_plot <- ggplot(samp, aes(x = date_time, y = samp[,4], col = sample_type, group = 1)) +
+      geom_point() +
+      geom_line() + 
+      labs(y = "Values") +
+      ggtitle(paste0(met)) +
+      theme_bw()
+    
+    # CALB DATA
+    samp %>.%
+      filter(.,sample_type == "CALB") %>.%
+      na.omit(.) %>.% 
+      select(., 3:4) -> calb
+    
+    # linear model
+    calb_lm_list[[i]] <- calb_linear_model(calb)
+    names(calb_lm_list)[i]<- met
+    
+    # Equation 
+    eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2,
+                     list(a = format(calb_lm_list[[i]]$intercept, digits = 2),
+                          b = format(calb_lm_list[[i]]$values, digits = 2),
+                          r2 = format(calb_lm_list[[i]]$r_squared, digits = 3)))
+    eq <- as.character(as.expression(eq))
+    # eq <- paste0("(y = ", format(calb_lm_list[[i]]$intercept, digits = 2), " + ", format(calb_lm_list[[i]]$values, digits = 2), " * x ; R squared = ", 
+    #              format(calb_lm_list[[i]]$r_squared, digits = 3), " ; n = ", calb_lm_list[[i]]$n, ")" )
+    
+    # graph
+    calb_plot <- ggplot(calb, aes(calb[,1], calb[,2])) +
+      geom_point() +
+      labs( x = "Standard", y = "Values") +
+      ggtitle(paste(met)) +
+      geom_text(x = 1.5*(diff(range(calb[,1])))/5 , y = round(max(calb[,2]), -4), label = eq, parse = TRUE) +
+      geom_smooth(method = "lm") +
+      theme_bw()
+    
+    # combine plot
+    graph_list[[i]] <- ggarrange(all_values_plot, calb_plot, labels = c("","","","Linear model"), 
+                                 font.label = list(size = 14, face = "bold"), align = "hv",
+                                 label.x = c(0.5, 0.5, 0.5, 0.2)) -> test
+    names(graph_list)[i]<- met
+    
+  }
+  
+  bind_rows(calb_lm_list) %>.% 
+    mutate(.,method = names(calb_lm_list)) %>.%
+    select(.,method, intercept, values, r_squared, n) -> lm_tab
+  
+  calibration <- (list(regression = lm_tab, graph = graph_list))
+  return(calibration)
+  
+} # FIN DE LA FONCTION calb2_aa3
+ 
 

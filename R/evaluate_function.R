@@ -5,7 +5,8 @@ library(econum)
 
 
 
-conversion_aa3(file_aa3_txt = "Data/raw/180802A.txt",file_aa3_xlsx = "Data/raw/180802A.xlsx", project = "calibration",remote = FALSE, local = TRUE,local_repos = "~/Documents/these_engels_guyliann/protocol_seal_aa3/Data", remote_repos = NA)
+conversion_aa3(file_aa3_txt = "Data/raw/181009A.txt",file_aa3_xlsx = "Data/raw/181009A.xlsx", project = "calibration",remote = FALSE, 
+               local = TRUE,local_repos = "~/Documents/protocol_seal_aa3/Data", remote_repos = NA)
 
 write_rds(EcoNumData_aa3, path = "nutri.rds" )
 
