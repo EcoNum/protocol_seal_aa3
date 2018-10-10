@@ -1,0 +1,27 @@
+---
+title: "Mesocosm monitoring"
+author: "Raphaël"
+date: "10/9/2018"
+output: html_document
+---
+
+```{r}
+library(econum)
+library(flow)
+library(ggpubr)
+library(flow)
+library(dplyr)
+source("../R/autoplot.R")
+```
+
+
+```{r}
+reposLoad("../Data/calibration/aa3/181009A-inorga_2018-10-09_14.50.20_5BBBEF80_aa3.RData")
+calibration <- calb2_aa3(EcoNumData_aa3)
+calibration$regression
+calibration$graph$PO4
+calibration$graph$NO3
+calibration$graph$NH4
+
+```
+
