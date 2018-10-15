@@ -283,7 +283,7 @@ library(ggpubr)
 # } # FIN DE LA FONCTION calb2_aa3
 
 ### update 2018-10-09
-# reposLoad("Data/calibration/aa3/180531A-orga_2018-05-31_13.52.40_5B0F3B00_aa3.RData")
+repos_load("Data/calibration/aa3/180531A-orga_2018-05-31_13.52.40_5B0F3B00_aa3.RData")
 # reposLoad("Data/calibration/aa3/180613E-inorga_2018-06-13_16.15.10_5B205E80_aa3.RData")
 
 # library(dplyr)
@@ -291,33 +291,32 @@ library(flow)
 library(tidyverse)
 
 # Fonction calb2_aa3
-calb2_aa3 <- function(x){
-  
-  # Fonction calb_linear_model
-  calb_linear_model <- function(x){
-    lmod<- lm(x[,2] ~ x[,1])
-    return(data.frame(intercept = lmod$coefficients[1], 
-                      values = lmod$coefficients[2], 
-                      r_squared = round(summary(lmod)$r.squared,digits = 4), 
-                      n = length(x[,1]),
-                      row.names = attr(x = x, which = "method")[[i]]$method))
-  }
+calb_aa3 <- function(x){
+  # Load packages
+  require(flow)
+  require(tidyverse)
+  require(dplyr)
+  require(ggplot2)
+  require(ggpubr)
   
   # Paramètres
   param <- list(method_1 = list(channel = 1, col = c(5,7)),
                 method_2 = list(channel = 2, col = c(8,10)),
                 method_3 = list(channel = 3, col = c(11,13)))
   
+  # Sample
+  attr(x = x, which = "metadata")$sample -> samp_name
+  
   # Lists
   graph_list <- list()
   calb_lm_list <- list()
   
-  for (i in seq_along(param)){
+  for (i in seq_along(param)) {
     # Samp Data
     x %>.%
       select(., date_time, sample_type, param[[i]]$col) -> samp
     
-    # method
+    # method & sample
     attr(x = x, which = "method")[[i]]$method -> met
     
     # all_values plot
@@ -325,20 +324,23 @@ calb2_aa3 <- function(x){
       geom_point() +
       geom_line() + 
       labs(y = "Values") +
-      ggtitle(paste0(met)) +
       theme_bw() +
       theme(legend.direction = "horizontal", legend.position = "bottom") + 
       guides(col = guide_legend(title = "Sample",title.position = "top"))
     
     # CALB DATA
-    samp %>.%
-      filter(.,sample_type == "CALB") %>.%
+    samp[samp$sample_type == "CALB",  ]  %>.%
       na.omit(.) %>.% 
       select(., 3:4) -> calb
     
     # linear model
-    calb_lm_list[[i]] <- calb_linear_model(calb)
-    names(calb_lm_list)[i]<- met
+    lmod <- lm(calb[,2] ~ calb[,1])
+    calb_lm_list[[i]] <- data.frame(intercept = lmod$coefficients[1], 
+                              values = lmod$coefficients[2], 
+                              r_squared = round(summary(lmod)$r.squared,digits = 4), 
+                              n = length(x[,1]),
+                              row.names = attr(x = x, which = "method")[[i]]$method)
+    names(calb_lm_list)[i] <- met
     
     # Equation 
     eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2,
@@ -346,30 +348,37 @@ calb2_aa3 <- function(x){
                           b = format(calb_lm_list[[i]]$values, digits = 2),
                           r2 = format(calb_lm_list[[i]]$r_squared, digits = 3)))
     eq <- as.character(as.expression(eq))
-    # eq <- paste0("(y = ", format(calb_lm_list[[i]]$intercept, digits = 2), " + ", format(calb_lm_list[[i]]$values, digits = 2), " * x ; R squared = ", 
-    #              format(calb_lm_list[[i]]$r_squared, digits = 3), " ; n = ", calb_lm_list[[i]]$n, ")" )
     
     # graph
     calb_plot <- ggplot(calb, aes(calb[,1], calb[,2])) +
       geom_point() +
       labs( x = "Standard", y = "Values") +
-      ggtitle(paste(met)) +
       geom_text(x = 2*(diff(range(calb[,1])))/5 , y = max(calb[,2]), label = eq, parse = TRUE) +
       geom_smooth(method = "lm") +
       theme_bw()
     
     # combine plot
-    graph_list[[i]] <- ggarrange(all_values_plot, calb_plot, labels = c("","","","Linear model"), 
-                                 font.label = list(size = 14, face = "bold"), align = "hv",
-                                 label.x = c(0.5, 0.5, 0.5, 0.2)) -> test
-    names(graph_list)[i]<- met
+    ggpubr::ggarrange(all_values_plot, calb_plot) -> combine_plot
+    graph_list[[i]] <- ggpubr::annotate_figure(combine_plot, 
+                                               top = text_grob(met,
+                                                               size =  14,
+                                                               face = "bold"),
+                                               bottom = text_grob(paste0("Data source: ", samp_name), 
+                                                                  color = "blue",
+                                                                  hjust = 1, 
+                                                                  x = 1, 
+                                                                  face = "italic", 
+                                                                  size = 10))
+    names(graph_list)[i] <- met
     
   }
   
-  bind_rows(calb_lm_list) %>.% 
-    mutate(.,method = names(calb_lm_list)) %>.%
-    select(.,method, intercept, values, r_squared, n) -> lm_tab
-  
+  bind_rows(calb_lm_list)  -> lm_tab
+  row.names(lm_tab) <- names(calb_lm_list)
+    # %>.% 
+    # mutate(.,method = names(calb_lm_list)) %>.%
+    # select(.,method, intercept, values, r_squared, n) -> lm_tab
+    
   calibration <- (list(regression = lm_tab, graph = graph_list))
   return(calibration)
   
