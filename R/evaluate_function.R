@@ -13,6 +13,10 @@ EcoNumData_aa3 <- convert_aa3(file_aa3_txt = "Data/raw/181009A.TXT",
                                   local = TRUE,
                                   local_repos = "~/Documents/protocol_seal_aa3/Data", 
                                   remote_repos = NA) 
+
+test <- convert_aa3_2(file_aa3_txt = "Data/raw/181009A.TXT",
+                              file_aa3_xlsx = "Data/raw/181009A.xlsx") 
+
 EcoNumData_aa3 -> inorga
 
 calb_aa3(inorga) -> calb_inorga
