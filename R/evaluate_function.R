@@ -19,11 +19,11 @@ test <- convert_aa3_2(file_aa3_txt = "Data/raw/181009A.TXT",
 
 EcoNumData_aa3 -> inorga
 
-calb_aa3(inorga) -> calb_inorga
+calb_aa3(EcoNumData_aa3) -> EcoNumData
 
 calc_newlm(EcoNumData = calb_inorga, 
            EcoNumData_aa3 = inorga, 
-           filter_list = list(NH4 = c(0.1,0.5))) -> calb_inorga2
+           filter_list = list(PO4 = c(0.1,0.5))) -> calb_inorga2
 
 # ORG DATA
 EcoNumData_aa3 <- convert_aa3(file_aa3_txt = "Data/raw/181011A.TXT",

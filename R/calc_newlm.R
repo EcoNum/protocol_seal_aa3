@@ -2,17 +2,18 @@
 
 # filter_list <- list(Ptot = 5, NO2 = 10)
 
-calc_newlm <- function(EcoNumData, EcoNumData_aa3,  filter_list) {
+calc_newlm <- function(EcoNumData, filter_list) {
   
-  calb_df <- EcoNumData$calb_db
-  samp_df <- EcoNumData_aa3[EcoNumData_aa3$sample_type == "SAMP",]
+  calb_df <- EcoNumData$calbdb
   # samp_df <- EcoNumData$sample_db
   
   # Check_1 : names of list element
   nutrient_ctrl <- c("Ptot", "NO2", "NOx", "Ntot", "NH4", "PO4")
   if ( is.null(names(filter_list)) ||
        !(names(filter_list) %in% nutrient_ctrl) ) {
-    stop("Attention : pas de noms pour les éléments de la liste ou pas de correspondance, utiliser un ou plusieurs des noms suivants : 'Ptot', 'NO2', 'NOx', 'Ntot', 'NH4', 'PO4'")
+    stop("Attention : pas de noms pour les éléments de la liste ou pas de 
+         correspondance, utiliser un ou plusieurs des noms suivants : 
+         'Ptot', 'NO2', 'NOx', 'Ntot', 'NH4', 'PO4'")
   }
   
   # graph lists status
@@ -32,7 +33,8 @@ calc_newlm <- function(EcoNumData, EcoNumData_aa3,  filter_list) {
     calb_lm_list[[i]] <- data.frame(std_name = paste(type, "new", sep = "_"),
                                     intercept = lm_mod$coefficients[1], 
                                     values = lm_mod$coefficients[2], 
-                                    r_squared = round(summary(lm_mod)$r.squared,digits = 4), 
+                                    r_squared = round(summary(lm_mod)$r.squared,
+                                                      digits = 4), 
                                     n = length(calb[,1]))
     names(calb_lm_list)[i] <- paste(type, "new", sep = "_")
     
@@ -49,8 +51,9 @@ calc_newlm <- function(EcoNumData, EcoNumData_aa3,  filter_list) {
       labs( x = "Standard", y = "Values") +
       geom_text(x = 2*(diff(range(calb$concentration)))/5 , y = max(calb$values), 
                 label = eq, parse = TRUE) +
-      ggrepel::geom_text_repel(aes(label = calb$concentration), nudge_y = 1.5, nudge_x = 1.5, 
-                               direction = "both", segment.size = 0.2) +
+      ggrepel::geom_text_repel(aes(label = calb$concentration), nudge_y = 1.5, 
+                               nudge_x = 1.5, direction = "both", 
+                               segment.size = 0.2) +
       geom_smooth(method = "lm") +
       ggtitle(paste(type, "new", sep = "_")) +
       theme_bw()
@@ -58,15 +61,18 @@ calc_newlm <- function(EcoNumData, EcoNumData_aa3,  filter_list) {
     names(graph_list)[i] <- paste(type, "new", sep = "_")
     
     # add new nutrient values
-    col_num <- length(samp_df) + 1
-    samp_df[,col_num] <- round((samp_df[,paste(type, "values", sep = "_")] - lm_mod$coefficients[[1]]) / lm_mod$coefficients[[2]],3)
+    EcoNumData$sampdb %>.%
+      mutate(., new = round((EcoNumData$sampdb[,paste(type, "values", sep = "_")] -
+                             lm_mod$coefficients[[1]]) / 
+                             lm_mod$coefficients[[2]],3)) -> EcoNumData$sampdb 
     
-    names(samp_df)[col_num] <- paste(type,"conc", "new", sep = "_")
+    names(EcoNumData$sampdb)[length(EcoNumData$sampdb)] <- paste(type,"conc","new", 
+                                                                 sep = "_")
   }
   
   # add new graph, regression parameter and nutrient values in EcoNumData
-  samp_list <- list(samp = samp_df)
-  EcoNumData <- append(EcoNumData, samp_list)
+  # samp_list <- list(samp = samp_df)
+  # EcoNumData <- append(EcoNumData, samp_list)
   EcoNumData$graph <- append(EcoNumData$graph, graph_list)
   EcoNumData$regression <- bind_rows(EcoNumData$regression, calb_lm_list)
   

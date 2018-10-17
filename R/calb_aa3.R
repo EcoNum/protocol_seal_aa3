@@ -42,7 +42,8 @@ calb_aa3 <- function(x){
     attr(x = x, which = "method")[[i]]$method -> met
     
     # all_values plot
-    all_values_plot <- ggplot(samp, aes(x = date_time, y = samp[,4], col = sample_type, group = 1)) +
+    all_values_plot <- ggplot(samp, aes(x = date_time, y = samp[,4], 
+                                        col = sample_type, group = 1)) +
       geom_point() +
       geom_line() + 
       labs(y = "Values") +
@@ -59,7 +60,8 @@ calb_aa3 <- function(x){
     # CALB DATABASE
     calb_data %>.%
       mutate(., id_cal = paste(lubridate::date(calb_data$date_time),
-                               str_split(colnames(calb_data)[4], pattern = "_")[[1]][1],
+                               str_split(colnames(calb_data)[4], 
+                                         pattern = "_")[[1]][1],
                                calb_data[[3]], sep = "_"),
                 date = lubridate::date(calb_data$date_time),
                 time = base::strftime(calb_data$date_time, format = "%H:%M:%S"),
@@ -68,37 +70,41 @@ calb_aa3 <- function(x){
     calb_data %>.%
       tidyr::gather(., key = "std_type", value = "concentration", 3) -> calb_data
     
-    mutate(calb_data, std_type = str_split(calb_data$std_type, pattern = "_")[[1]][1],
+    mutate(calb_data, std_type = str_split(calb_data$std_type, 
+                                           pattern = "_")[[1]][1],
                       units_ = attr(x, which = "method")[[i]]$unit ) -> calb_data
     
     names(calb_data)[3] <- "values"
     
     calb_data %>.% 
-      select(., id_cal, project_id, date, time, std_type, units_, concentration, values) -> calb_db_list[[i]]
+      select(., id_cal, project_id, date, time, std_type, units_, 
+             concentration, values) -> calb_db_list[[i]]
     
     # CALB DATABASE (R base) 
     # calb_data$id_cal <- paste(lubridate::date(calb_data$date_time),
-    #                      str_split(colnames(calb_data)[4], pattern = "_")[[1]][1],
+    #                      str_split(colnames(calb_data)[4], 
+    #                      pattern = "_")[[1]][1],
     #                      calb_data[[3]], sep = "_")
     # calb_data$date <- lubridate::date(calb_data$date_time)
     # calb_data$time <- strftime(calb_data$date_time, format = "%H:%M:%S")
     # calb_data$project_id <- attr(x, which = "metadata")$sample
     
     # calb_data %>.%
-    #   tidyr::gather(., key = "std_type", value = "concentration", 3) -> calb_data
+    #   tidyr::gather(., key = "std_type", 
+    #                    value = "concentration", 3) -> calb_data
     # calb_data$std_type <- str_split(calb_data$std_type, pattern = "_")[[1]][1] 
     # names(calb_data)[3] <- "values"
-    # calb_data[,c("id_cal", "project_id", "date", "time", "std_type", "concentration", "values")] -> calb_db_list[[i]]
+    # calb_data[,c("id_cal", "project_id", "date", "time", "std_type", 
+    #           "concentration", "values")] -> calb_db_list[[i]]
     
     names(calb_db_list)[i] <- unique(calb_data$date_type)
     
     # linear model
     lmod <- lm(calb[,2] ~ calb[,1])
-    calb_lm_list[[i]] <- data.frame(std_name = attr(x = x, which = "method")[[i]]$method,
-                                    intercept = lmod$coefficients[1], 
-                                    values = lmod$coefficients[2], 
-                                    r_squared = round(summary(lmod)$r.squared,digits = 4), 
-                                    n = length(calb[,1]))
+    data.frame(std_name = attr(x = x, which = "method")[[i]]$method,
+               intercept = lmod$coefficients[1], values = lmod$coefficients[2], 
+               r_squared = round(summary(lmod)$r.squared,digits = 4), 
+               n = length(calb[,1])) -> calb_lm_list[[i]]
     names(calb_lm_list)[i] <- met
     
     # Equation 
@@ -112,24 +118,22 @@ calb_aa3 <- function(x){
     calb_plot <- ggplot(calb, aes(calb[,1], calb[,2])) +
                   geom_point() +
                   labs( x = "Standard", y = "Values") +
-                  geom_text(x = 2*(diff(range(calb[,1])))/5 , y = max(calb[,2]), label = eq, parse = TRUE) +
-                  ggrepel::geom_text_repel(aes(label = calb[,1]), nudge_y = 1.5, nudge_x = 1.5, direction = "both",
+                  geom_text(x = 2*(diff(range(calb[,1])))/5 , y = max(calb[,2]), 
+                            label = eq, parse = TRUE) +
+                  ggrepel::geom_text_repel(aes(label = calb[,1]), nudge_y = 1.5, 
+                                           nudge_x = 1.5, direction = "both",
                                            segment.size = 0.2) +
                   geom_smooth(method = "lm") +
                   theme_bw()
     
     # combine plot
     ggpubr::ggarrange(all_values_plot, calb_plot) -> combine_plot
-    graph_list[[i]] <- ggpubr::annotate_figure(combine_plot, 
-                                               top = text_grob(met,
-                                                               size =  14,
-                                                               face = "bold"),
-                                               bottom = text_grob(paste0("Data source: ", samp_name), 
-                                                                  color = "blue",
-                                                                  hjust = 1, 
-                                                                  x = 1, 
-                                                                  face = "italic", 
-                                                                  size = 10))
+    ggpubr::annotate_figure(combine_plot, 
+                            top = text_grob(met, size =  14, face = "bold"),
+                            bottom = text_grob(paste0("Data source: ", samp_name), 
+                                               color = "blue", hjust = 1, 
+                                               x = 1, face = "italic", 
+                                               size = 10)) -> graph_list[[i]]  
     names(graph_list)[i] <- met
   }
   
@@ -138,7 +142,10 @@ calb_aa3 <- function(x){
   
   bind_rows(calb_db_list) -> calb_db
   
-  calibration <- (list(calb_db = calb_db, regression = lm_tab, graph = graph_list))
+  x[x$sample_type == "SAMP",] -> samp_df
+  
+  calibration <- (list(calbdb = calb_db, regression = lm_tab, 
+                       graph = graph_list, sampdb = samp_df))
   return(calibration)
 }
 
