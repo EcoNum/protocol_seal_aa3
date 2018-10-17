@@ -97,10 +97,10 @@ calb_aa3 <- function(x){
     # calb_data[,c("id_cal", "project_id", "date", "time", "std_type", 
     #           "concentration", "values")] -> calb_db_list[[i]]
     
-    names(calb_db_list)[i] <- unique(calb_data$date_type)
+    names(calb_db_list)[i] <- unique(calb_data$std_type)
     
     # linear model
-    lmod <- lm(calb[,2] ~ calb[,1])
+    lmod <- lm(as.formula(paste0("calb$", names(calb)[2], "~ calb$", names(calb)[1])))
     data.frame(std_name = attr(x = x, which = "method")[[i]]$method,
                intercept = lmod$coefficients[1], values = lmod$coefficients[2], 
                r_squared = round(summary(lmod)$r.squared,digits = 4), 
