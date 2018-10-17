@@ -8,8 +8,9 @@
 #' @examples
 #' # Load some EcoNumData
 #' econum::repos_load("Data/calibration/aa3/180531A-orga_2018-05-31_13.52.40_5B0F3B00_aa3.RData")
+#' econum::repos_load("Data/calibration/aa3/180613E-inorga_2018-06-13_16.15.10_5B205E80_aa3.RData")
 #' # Check data quality and calibration
-#' calb_aa3(EcoNumData_aa3)
+#' calb_aa3(EcoNumData_aa3) 
 #' 
 calb_aa3 <- function(x){
   # Load packages
@@ -31,6 +32,7 @@ calb_aa3 <- function(x){
   # Lists
   graph_list <- list()
   calb_lm_list <- list()
+  calb_db_list <- list()
   
   for (i in seq_along(param)) {
     # Samp Data
@@ -50,16 +52,53 @@ calb_aa3 <- function(x){
     
     # CALB DATA
     samp[samp$sample_type == "CALB",  ]  %>.%
-      na.omit(.) %>.% 
-      .[ ,3:4] -> calb
+      na.omit(.) -> calb_data
+    
+    calb_data[ ,3:4] -> calb
+    
+    # CALB DATABASE
+    calb_data %>.%
+      mutate(., id_cal = paste(lubridate::date(calb_data$date_time),
+                               str_split(colnames(calb_data)[4], pattern = "_")[[1]][1],
+                               calb_data[[3]], sep = "_"),
+                date = lubridate::date(calb_data$date_time),
+                time = base::strftime(calb_data$date_time, format = "%H:%M:%S"),
+                project_id = attr(x, which = "metadata")$sample) -> calb_data
+    
+    calb_data %>.%
+      tidyr::gather(., key = "std_type", value = "concentration", 3) -> calb_data
+    
+    mutate(calb_data, std_type = str_split(calb_data$std_type, pattern = "_")[[1]][1],
+                      units_ = attr(x, which = "method")[[i]]$unit ) -> calb_data
+    
+    names(calb_data)[3] <- "values"
+    
+    calb_data %>.% 
+      select(., id_cal, project_id, date, time, std_type, units_, concentration, values) -> calb_db_list[[i]]
+    
+    # CALB DATABASE (R base) 
+    # calb_data$id_cal <- paste(lubridate::date(calb_data$date_time),
+    #                      str_split(colnames(calb_data)[4], pattern = "_")[[1]][1],
+    #                      calb_data[[3]], sep = "_")
+    # calb_data$date <- lubridate::date(calb_data$date_time)
+    # calb_data$time <- strftime(calb_data$date_time, format = "%H:%M:%S")
+    # calb_data$project_id <- attr(x, which = "metadata")$sample
+    
+    # calb_data %>.%
+    #   tidyr::gather(., key = "std_type", value = "concentration", 3) -> calb_data
+    # calb_data$std_type <- str_split(calb_data$std_type, pattern = "_")[[1]][1] 
+    # names(calb_data)[3] <- "values"
+    # calb_data[,c("id_cal", "project_id", "date", "time", "std_type", "concentration", "values")] -> calb_db_list[[i]]
+    
+    names(calb_db_list)[i] <- unique(calb_data$date_type)
     
     # linear model
     lmod <- lm(calb[,2] ~ calb[,1])
-    calb_lm_list[[i]] <- data.frame(intercept = lmod$coefficients[1], 
+    calb_lm_list[[i]] <- data.frame(std_name = attr(x = x, which = "method")[[i]]$method,
+                                    intercept = lmod$coefficients[1], 
                                     values = lmod$coefficients[2], 
                                     r_squared = round(summary(lmod)$r.squared,digits = 4), 
-                                    n = length(calb[,1]),
-                                    row.names = attr(x = x, which = "method")[[i]]$method)
+                                    n = length(calb[,1]))
     names(calb_lm_list)[i] <- met
     
     # Equation 
@@ -71,13 +110,13 @@ calb_aa3 <- function(x){
     
     # graph
     calb_plot <- ggplot(calb, aes(calb[,1], calb[,2])) +
-      geom_point() +
-      labs( x = "Standard", y = "Values") +
-      geom_text(x = 2*(diff(range(calb[,1])))/5 , y = max(calb[,2]), label = eq, parse = TRUE) +
-      ggrepel::geom_text_repel(aes(label = calb[,1]), nudge_y = 1.5, nudge_x = 1.5, direction = "both",
-                               segment.size = 0.2) +
-      geom_smooth(method = "lm") +
-      theme_bw()
+                  geom_point() +
+                  labs( x = "Standard", y = "Values") +
+                  geom_text(x = 2*(diff(range(calb[,1])))/5 , y = max(calb[,2]), label = eq, parse = TRUE) +
+                  ggrepel::geom_text_repel(aes(label = calb[,1]), nudge_y = 1.5, nudge_x = 1.5, direction = "both",
+                                           segment.size = 0.2) +
+                  geom_smooth(method = "lm") +
+                  theme_bw()
     
     # combine plot
     ggpubr::ggarrange(all_values_plot, calb_plot) -> combine_plot
@@ -94,41 +133,34 @@ calb_aa3 <- function(x){
     names(graph_list)[i] <- met
   }
   
+  # CALIBRATION list
   bind_rows(calb_lm_list)  -> lm_tab
-  row.names(lm_tab) <- names(calb_lm_list)
   
-  calibration <- (list(regression = lm_tab, graph = graph_list))
+  bind_rows(calb_db_list) -> calb_db
+  
+  calibration <- (list(calb_db = calb_db, regression = lm_tab, graph = graph_list))
   return(calibration)
 }
 
+# if (make_sampdb == TRUE) {
+#     meth <- str_split(attr(x, which = "metadata")$sample, pattern = "-")[[1]][2]
+# 
+#     meth_list <- list(orga = c("Ptot", "Ntot", "NO2"),
+#                       inorga = c("PO4", "NOx", "NH4"))
+# 
+#     values <- paste(meth_list[[meth]], "values", sep = "_")
+#     concs <- paste(meth_list[[meth]], "conc", sep = "_")
+# 
+#     x %>.%
+#       filter(., sample_type == "SAMP") %>.%
+#       select(., sample_id, date_time, values[1], concs[1], values[2], concs[2],
+#                 values[3], concs[3], project, sample_date, authors, comment) -> sample_db
+# 
+#     samp_list <- list(sample_db = sample_db)
+#     calibration <- append(calibration, samp_list)
+#     return(calibration)
+# 
+# } else {
+#     return(calibration)
+# } 
 
-
-
-
-
-#### CALCUL NEW LM
-
-
-filter_list <- list(Ptot = 10)
-
-calc_newlm <- function(x, filter_list) {
-  
-  # Check_1 : names of list element
-  nutrient_ctrl <- c("Ptot", "NO2", "NOx", "Ntot", "NH4", "PO4")
-  if ( is.null(names(filter_list)) |
-       !(names(filter_list) %in% nutrient_ctrl) ) {
-    stop("Attention : pas de noms pour les éléments de la liste ou pas de correspondance, utiliser un ou plusieurs des noms suivant : 'Ptot', 'NO2', 'NOx', 'Ntot', 'NH4', 'PO4'")
-  }
-  
-  
-  nutri_std <- paste0(names(filter_list),"_std")
-  nutri_values <- paste0(names(filter_list),"_values") 
-  
-  # CALB DATA
-  x[x$sample_type == "CALB" & !(x[[nutri]] %in% filter_list[["Ptot"]]), ] 
-  
-  
-  
-}
-  
-  

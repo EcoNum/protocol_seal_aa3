@@ -173,11 +173,16 @@ conversion2_aa3 <- function(file_aa3_txt, file_aa3_xlsx, project, topic = NULL,
                                    locale = readr::locale(encoding = "LATIN1"))
   header <- stringr::str_extract_all(header_read,"(-?µ?\\w+:?\\.?-?/?\\w*:?/?\\d*)")
   
+  # header_read %>.%
+  #   str_replace_all(., pattern = ";;", "") %>.%
+  #   str_sub(., start = 1, end = -2) %>.%
+  #   str_split(., pattern = ";") -> header
+  
   # Rename list elements
   sapply(header, `[[`, 1) -> names(header)
   
   # Comment
-  if (lengths(header["COMM"]) > 2) { 
+  if (lengths(header["COMM"]) > 2) {
     header$COMM[2] <- paste(header$COMM[-1], collapse = " ")
     header$COMM <- header$COMM[1:2]
   }
