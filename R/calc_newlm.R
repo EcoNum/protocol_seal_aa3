@@ -61,13 +61,15 @@ calc_newlm <- function(EcoNumData, filter_list) {
     names(graph_list)[i] <- paste(type, "new", sep = "_")
     
     # add new nutrient values
+    cname <- paste(type, "conc", sep = "_")
+    cnum <- which(names(aa3$sampdb) == cname)
+    names(EcoNumData$sampdb)[cnum] <- paste(type, "conc_old", sep = "_")
     EcoNumData$sampdb %>.%
-      mutate(., new = round((EcoNumData$sampdb[,paste(type, "values", sep = "_")] -
-                             lm_mod$coefficients[[1]]) / 
-                             lm_mod$coefficients[[2]],3)) -> EcoNumData$sampdb 
+      dplyr::mutate(., new = round((EcoNumData$sampdb[,paste(type, "values", sep = "_")] -
+                                      lm_mod$coefficients[[1]]) /
+                                     lm_mod$coefficients[[2]],3)) -> EcoNumData$sampdb
     
-    names(EcoNumData$sampdb)[length(EcoNumData$sampdb)] <- paste(type,"conc","new", 
-                                                                 sep = "_")
+    names(EcoNumData$sampdb)[length(EcoNumData$sampdb)] <- paste(type,"conc", sep = "_")
   }
   
   # add new graph, regression parameter and nutrient values in EcoNumData
