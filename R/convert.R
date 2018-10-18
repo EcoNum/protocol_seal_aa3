@@ -16,7 +16,7 @@ convert_aa3 <- function(file_aa3_txt, file_aa3_xlsx){
   header_read <- readr::read_lines(file_aa3_txt, n_max = 13, 
                                    locale = readr::locale(encoding = "LATIN1"))
   header <- stringr::str_extract_all(header_read,
-                                     "(-?µ?\\w+:?\\.?-?/?\\w*:?/?\\d*)")
+                                     "(-?\u03BC?\\w+:?\\.?-?/?\\w*:?/?\\d*)")
   
   # Rename list elements
   sapply(header, `[[`, 1) -> names(header)

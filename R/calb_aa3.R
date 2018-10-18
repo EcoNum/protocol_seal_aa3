@@ -20,6 +20,7 @@ calb_aa3 <- function(x){
   require(ggplot2)
   require(ggpubr)
   require(ggrepel)
+
   
   # Paramètres
   param <- list(method_1 = list(col = c(5,7)),
@@ -142,7 +143,10 @@ calb_aa3 <- function(x){
   
   bind_rows(calb_db_list) -> calb_db
   
-  x[x$sample_type == "SAMP",] -> samp_df
+  x[x$sample_type == "SAMP",] %>.%
+    mutate(., filename = attr(x, which = "metadata")$sample) -> samp_df
+  paste(str_split(attr(x, which = "metadata")$sample, pattern = "-")[[1]][2],
+        "filename", sep = "_") -> names(samp_df)[length(samp_df)]
   
   calibration <- (list(calbdb = calb_db, regression = lm_tab, 
                        graph = graph_list, sampdb = samp_df))
