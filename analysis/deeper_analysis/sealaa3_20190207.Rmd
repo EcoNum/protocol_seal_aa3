@@ -1,0 +1,148 @@
+---
+title: "Remise en route du seal AA3"
+author: "Engels Guyliann"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    fig_height: 4
+    fig_width: 5.6
+    number_sections: yes
+    toc: yes
+---
+
+Après plusieurs semaines d'arrêt, le seal AA3 est relancé après un nettoyage complet de l'installation 
+
+```{r setup}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+source("../../R/import_aa3_txt.R")
+SciViews::R
+```
+
+
+```{r import}
+orga <- aa3_txt(file_aa3_txt = "../../data/raw/190205A.TXT", project = "test", topic = NULL)
+```
+
+# Methode Organique
+
+Les données obtenues sont les suivantes
+
+```{r}
+rmarkdown::paged_table(orga)
+```
+
+## Ptot
+
+La dernière valeur de DRIFT est très élevé étant données qu'il a manqué de solvant pour les derniers échantillons. Le drift ayant pour objectif de corriger une dérive du signal. Je ne dipose pas des données brut afin de recalculer les données.
+
+```{r}
+chart(orga, Ptot_values ~ date_time %group=% 1 %col=%sample_type) +
+  geom_line() +
+  geom_point()
+```
+
+## Ntot
+
+Nous n'observons pas de grosse anomalie graphiquement.
+```{r}
+chart(orga, Ntot_conc ~ date_time %group=% 1 %col=%sample_type) +
+  geom_line() +
+  geom_point()
+```
+
+Le coefficient de variation reste très élevé pour les valeurs inférieures à 1 $\mu m/L$.
+
+```{r}
+orga %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(Ntot_conc), sd = sd(Ntot_conc), cv = sd(Ntot_conc)/mean(Ntot_conc), n = n()) %>.%
+  rmarkdown::paged_table(.)
+```
+
+## NO2
+
+```{r}
+chart(orga, NO2_conc ~ date_time %group=% 1 %col=%sample_type) +
+  geom_line() +
+  geom_point()
+```
+
+
+```{r}
+orga %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(NO2_conc), sd = sd(NO2_conc), cv = sd(NO2_conc)/mean(NO2_conc), n = n()) %>.%
+  rmarkdown::paged_table(.)
+```
+
+# Méthode inorganique
+
+```{r import1}
+inorga <- aa3_txt(file_aa3_txt = "../../data/raw/190204AR1.TXT", project = "test", topic = NULL)
+```
+
+Les données obtenues sont les suivantes
+
+```{r}
+rmarkdown::paged_table(inorga)
+```
+
+## PO4
+
+```{r}
+chart(inorga, PO4_conc ~ date_time %group=% 1 %col=%sample_type) +
+  geom_line() +
+  geom_point()
+```
+
+
+
+```{r}
+inorga %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(PO4_conc), sd = sd(PO4_conc), cv = sd(PO4_conc)/mean(PO4_conc), n = n()) %>.%
+  rmarkdown::paged_table(.)
+```
+
+
+## NO3
+
+```{r}
+chart(inorga, NOx_conc ~ date_time %group=% 1 %col=%sample_type) +
+  geom_line() +
+  geom_point()
+```
+
+
+
+```{r}
+inorga %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(NOx_conc), sd = sd(NOx_conc), cv = sd(NOx_conc)/mean(NOx_conc), n = n()) %>.%
+  rmarkdown::paged_table(.)
+```
+
+
+
+## NH4
+
+```{r}
+chart(inorga, NH4_conc ~ date_time %group=% 1 %col=%sample_type) +
+  geom_line() +
+  geom_point()
+```
+
+
+```{r}
+inorga %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(NH4_conc), sd = sd(NH4_conc), cv = sd(NH4_conc)/mean(NH4_conc), n = n()) %>.%
+  rmarkdown::paged_table(.)
+```
+
+

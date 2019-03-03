@@ -1,0 +1,139 @@
+---
+title: "Seal AA3"
+author: "Engels Guyliann"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    fig_height: 4.5
+    fig_width: 6.3
+    number_sections: yes
+    toc: yes
+params: 
+    data: "../../data/raw/190213A.TXT"
+    data1: "../../data/raw/190213AR5.TXT"
+    data2: "../../data/raw/190213AR6.TXT"
+---
+
+La fonction de base ne sait pas importer le jeux de données 
+
+```{r setup, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+source("../../R/import_aa3_txt.R")
+SciViews::R
+library(knitr)
+```
+
+
+```{r import}
+df1 <- aa3_txt_raw(file_aa3_txt = params$data, project = NULL, topic = NULL)
+```
+
+# Métadonnées
+
+```{r}
+attr(df1, "metadata")
+```
+
+# Méthode
+
+```{r}
+kable(attr(df1, "method"))
+```
+
+```{r}
+aa3_plot(nutrient = "Ntot_conc", data = df1)
+```
+
+
+```{r}
+df2 <- aa3_txt_raw(file_aa3_txt = params$data1, project = NULL, topic = NULL)
+aa3_plot(nutrient = "Ntot_conc", data = df2)
+```
+
+Après correction du fichier sur le seal aa3, les résultats suivants sont obtenus
+
+```{r}
+df3 <- aa3_txt_raw(file_aa3_txt = params$data2, project = NULL, topic = NULL)
+aa3_plot(nutrient = "Ntot_conc", data = df3)
+```
+
+```{r}
+df3 %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(Ntot_conc), sd = sd(Ntot_conc), cv = sd(Ntot_conc)/mean(Ntot_conc), n = n()) %>.%
+  kable(.)
+```
+
+Pour le Ntot nous obtenons,
+
+Après une discussion sur les résultats, on pense que les droites de calibration ne sont pas correcte. Nous calculons une nouvelle droite de régression.
+
+```{r}
+summary(lm. <- lm(filter(df3, sample_type == "CALB"), formula = Ntot_values ~ Ntot_std))
+lm. %>.% (function (lm, model = lm[["model"]], vars = names(model))
+  chart(model, aes_string(x = vars[2], y = vars[1])) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x))(.)
+
+df3 %>.%
+  mutate(., Ntot_conc1 = (Ntot_values-3211.35)/1117.90 ) -> df3
+```
+
+On observe que le cv diminue pour l'ensemble des concentrations testées.
+
+```{r}
+aa3_plot(nutrient = "Ntot_conc1", data = df3)
+df3 %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(Ntot_conc1), sd = sd(Ntot_conc1), cv = sd(Ntot_conc1)/mean(Ntot_conc1), n = n()) %>.%
+  kable(.)
+```
+
+La correction de la droite de calibration n'est pas suffisante pour améliorer la précision des mesures réalisées sur Ntot. Il faut prévoir une correction sur l'instrument des points problématiques.
+
+Pour le Ptot, nous obtenons 
+
+```{r}
+aa3_plot(nutrient = "Ptot_conc", data = df3)
+df3 %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(Ptot_conc), sd = sd(Ptot_conc), cv = sd(Ptot_conc)/mean(Ptot_conc), n = n()) %>.%
+  kable(.)
+```
+
+Après une discussion sur les résultats, on pense que les droites de calibration ne sont pas correcte. La droite de calibration rouge représente les points employés afin de calculer la droite de régression employé par le seal aa3
+
+```{r}
+df3[df3$sample_type =="CALB", c("Ptot_std", "Ntot_std")] <- rev(c(1, 5, 10, 15, 20, 25, 30, 35, 40, 45))
+chart(filter(df3, sample_type =="CALB"), formula = Ptot_values ~ Ptot_std) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(f_aes(Ptot_values ~ Ptot_std), data = filter(df3, sample_type =="CALB" & Ptot_std >= 20), method = "lm", se = FALSE, color = "red")
+```
+
+Nous recalculons de ce fait les valeurs de concentration
+
+```{r}
+summary(lm. <- lm(filter(df3, sample_type == "CALB"), formula = Ptot_values ~ Ptot_std))
+lm. %>.% (function (lm, model = lm[["model"]], vars = names(model))
+  chart(model, aes_string(x = vars[2], y = vars[1])) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x))(.)
+
+df3 %>.%
+  mutate(., Ptot_conc1 = (Ptot_values-4725.52)/1220.72) -> df3
+```
+
+On observe que le cv diminue pour l'ensemble des concentrations testées.
+
+```{r}
+aa3_plot(nutrient = "Ptot_conc1", data = df3)
+df3 %>.%
+  filter(., sample_type %in% c("CALB", "SAMP")) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(Ptot_conc1), sd = sd(Ptot_conc1), cv = sd(Ptot_conc1)/mean(Ptot_conc1), n = n()) %>.%
+  kable(.)
+```

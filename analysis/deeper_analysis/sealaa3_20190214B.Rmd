@@ -1,0 +1,65 @@
+---
+title: "Seal AA3"
+author: "Engels Guyliann"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    fig_height: 4
+    fig_width: 5.6
+    number_sections: yes
+    toc: yes
+params: 
+    data: "../../data/raw/190214B.TXT"
+---
+
+La fonction de base ne sait pas importer le jeux de données 
+
+```{r setup, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+source("../../R/import_aa3_txt.R")
+SciViews::R
+library(knitr)
+```
+
+
+```{r import}
+df1 <- aa3_txt_raw(file_aa3_txt = params$data, project = NULL, topic = NULL)
+```
+
+# Métadonnées
+
+```{r}
+attr(df1, "metadata") %>.% unlist(.) -> t
+kable(t, col.names = "Métadonnées")
+```
+
+# Méthode
+
+```{r}
+kable(attr(df1, "method"), col.names = c("Méthode", "Unité", "Base", "Gain", "Lamp"))
+```
+
+```{r}
+aa3_plot(nutrient = "NO2_conc", data = df1)
+```
+
+Ce premier graphique met en avant un point suspect à presque 60 µmol/L.
+
+```{r}
+aa3_plot(nutrient = "NO2_conc", data = filter(df1, NO2_conc < 45))
+```
+
+
+
+```{r}
+df1 %>.%
+  filter(., sample_type == "SAMP" & NO2_conc < 45) %>.%
+  mutate(., sample_id = factor(sample_id,levels = c("cal1", "cal5", "cal10", "cal15", "cal20", "cal25", "cal30", "mesoA", "mesoB"))) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(NO2_conc), sd = sd(NO2_conc), cv = sd(NO2_conc)/mean(NO2_conc), n = n()) %>.%
+  kable(.)
+```
+
+Les coefficients de variation pour le dosage des nitrates sont très intéressant et faible. 
+
+Avec un changement de lentille (5 fois plus sensible) du colorimètre, nos pouvons espérer doser avec moins de 2 % d'erreur des concentrations en nitrite de l'ordre de 0.2 µmol/L.

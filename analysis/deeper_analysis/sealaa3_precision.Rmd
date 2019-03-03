@@ -1,0 +1,218 @@
+---
+title: "Seal AA3 : étude de la précision"
+abstract: "Suite à une réunion d'équipe du lundi 11 février 2018, des expériences portant sur la précision du seal AA3 sont menée."
+author: "Engels Guyliann"
+date: "2018-02-15"
+params: 
+    data1: "../../data/raw/190214B.TXT"
+    data2: "../../data/raw/190213AR6.TXT"
+    data3: "../../data/raw/190212C.TXT"
+    script: "../../R/import_aa3_txt.R"
+output:
+  html_document:
+    fig_height: 4
+    fig_width: 5.6
+    number_sections: yes
+    toc: yes
+---
+
+```{r setup, echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+SciViews::R
+library(knitr)
+opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+# script avec des fonctions d'importation
+source(params$script)
+```
+
+```{r import}
+df1 <- aa3_txt_raw(file_aa3_txt = params$data1, project = NULL, topic = NULL) %>.%
+  select(., -contains("Ptot"), -contains("Ntot"))
+df2 <- aa3_txt_raw(file_aa3_txt = params$data2, project = NULL, topic = NULL)%>.%
+  select(., -contains("NO2"))
+inorga <- aa3_txt(file_aa3_txt = params$data3, project = "test", topic = NULL)
+```
+
+
+# Les ions nitrites
+
+Les ions nitrites ont été dosés le `r attr(df1, "metadata")$date` et les données sont dans le fichier `r attr(df1, "metadata")$sample` 
+
+```{r}
+kable(attr(df1, "method"), col.names = c("Méthode", "Unité", "Base", "Gain", "Lamp"))
+```
+
+Après nettoyage des données, nous obtenons le graphique suivants  montrant les concentrations obtenues au cours du temps.
+
+```{r}
+aa3_plot(nutrient = "NO2_conc", data = filter(df1, NO2_conc < 45))
+```
+
+```{r}
+df1 %>.%
+  filter(., sample_type == "SAMP" & NO2_conc < 45) %>.%
+  mutate(., sample_id = factor(sample_id,levels = c("cal1", "cal5", "cal10", "cal15", "cal20", "cal25", "cal30", "mesoA", "mesoB"))) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(NO2_conc), sd = sd(NO2_conc), cv = sd(NO2_conc)/mean(NO2_conc), n = n()) %>.%
+  kable(., col.names = c("Echantillons", "Moyenne", "Ecart-type", "Coefficient de variation", "n"))
+```
+
+Les coefficients de variation pour le dosage des nitrates sont très faible. Avec un changement de lentille (5 fois plus sensible) du colorimètre, nous pouvons espérer doser avec moins de 2 % d'erreur des concentrations en nitrite de l'ordre de 0.2 µmol/L.
+
+
+# Phosphore totale
+
+Le phosphore organique et inorganique dissous ont été dosés le `r attr(df2, "metadata")$date` et les données sont dans le fichier `r attr(df2, "metadata")$sample`.
+
+```{r}
+kable(attr(df1, "method"), col.names = c("Méthode", "Unité", "Base", "Gain", "Lamp"))
+```
+
+Après avoir nettoyé le fichier suite à un problème lié à la courbe de calibration (en rouge les points employés et en bleu la droite de calibration recalculée).
+
+```{r}
+df2[df2$sample_type =="CALB", "Ptot_std"] <- rev(c(1, 5, 10, 15, 20, 25, 30, 35, 40, 45))
+lm. <- lm(filter(df2, sample_type == "CALB"), formula = Ptot_values ~ Ptot_std)
+
+df2 %>.%
+  mutate(., Ptot_conc1 = (Ptot_values-4725.52)/1220.72) -> df2
+
+chart(filter(df2, sample_type =="CALB"), formula = Ptot_values ~ Ptot_std) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(f_aes(Ptot_values ~ Ptot_std), data = filter(df2, sample_type =="CALB" & Ptot_std >= 20), method = "lm", se = FALSE, color = "red") +
+  labs( y = "Ptot_values", x = "Ptot_std")
+
+```
+
+nous obtenons le graphique suivant
+
+```{r}
+aa3_plot(nutrient = "Ptot_conc1", data = df2)
+```
+
+```{r}
+df2 %>.%
+  filter(., sample_type == "SAMP") %>.%
+  mutate(., sample_id = factor(sample_id,levels = c("cal1", "cal5", "cal10", "cal15", "cal20", "cal25", "cal30", "cal35", "cal40", "cal45", "mesoA", "mesoB"))) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(Ptot_conc1), sd = sd(Ptot_conc1), cv = sd(Ptot_conc1)/mean(Ptot_conc1), n = n()) %>.%
+  kable(., col.names = c("Echantillons", "Moyenne", "Ecart-type", "Coefficient de variation", "n"))
+```
+
+Avec un changement de lentille (5 fois plus sensible) du colorimètre, nous pouvons espérer doser avec moins de 5 % d'erreur des concentrations  de l'ordre de 1 µmol/L (malgré le recalcule de la droite de calibration).
+
+# Azote totale
+
+L'azote organique et inorganique dissous ont été dosés en même temps que le phosphore totale.
+
+Après avoir nettoyé le fichier suite à un problème lié à la courbe de calibration (voir Analyse du phosphore totale).
+
+```{r}
+df2[df2$sample_type =="CALB", "Ntot_std"] <- rev(c(1, 5, 10, 15, 20, 25, 30, 35, 40, 45))
+lm. <- lm(filter(df2, sample_type == "CALB"), formula = Ntot_values ~ Ntot_std)
+df2 %>.%
+  mutate(., Ntot_conc1 = (Ntot_values-3211.35)/1117.90 ) -> df2
+```
+
+```{r}
+aa3_plot(data = df2,nutrient = "Ntot_conc1" )
+####################
+#unique(df2$sample_type)
+#cols<-RColorBrewer::brewer.pal(n=7,name="Set1")
+#plot(data = df2, Ntot_conc1 ~ date_time, type =c("p"), col = cols[df2$sample_type]) +
+#  lines(data = df2, Ntot_conc1 ~ date_time)
+#identify()
+id <- c(13, 42, 44, 49, 53, 73, 84, 114)
+```
+
+Malgré le recalcule de concentrations avec la nouvelle droite de calibration de nombreux points sont suspects.
+
+```{r}
+df2 %>.%
+  slice(., - id) %>.%
+  aa3_plot(data = . ,nutrient = "Ntot_conc1")
+```
+
+```{r}
+df2 %>.%
+  filter(., sample_type == "SAMP") %>.%
+  mutate(., sample_id = factor(sample_id,levels = c("cal1", "cal5", "cal10", "cal15", "cal20", "cal25", "cal30", "cal35", "cal40", "cal45", "mesoA", "mesoB"))) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(Ntot_conc1), sd = sd(Ntot_conc1), cv = sd(Ntot_conc1)/mean(Ntot_conc1), n = n()) %>.%
+  kable(., col.names = c("Echantillons", "Moyenne", "Ecart-type", "Coefficient de variation", "n"))
+```
+
+Malgré le nettoyage des données, les coefficients de variation restent très élevé. 
+
+# Phosphate
+
+
+Les ions nitrites ont été dosés le `r attr(inorga, "metadata")$date` et les données sont dans le fichier `r attr(inorga, "metadata")$sample` 
+
+```{r}
+kable(attr(inorga, "method"), col.names = c("Méthode", "Unité", "Base", "Gain", "Lamp"))
+```
+
+```{r}
+aa3_plot(data = inorga, nutrient = "PO4_conc")
+```
+
+```{r}
+inorga %>.%
+  filter(., sample_type %in% c("SAMP") & sample_id != "mesoA" & sample_id != "mesoB") %>.%
+  mutate(., sample_id = factor(sample_id, levels = c("cal1", "cal5", "cal10", "cal15", 
+                                                     "cal20", "cal25", "cal30"))) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(PO4_conc), sd = sd(PO4_conc), cv = sd(PO4_conc)/mean(PO4_conc), n = n()) %>.%
+  kable(., col.names = c("Echantillons", "Moyenne", "Ecart-type", "Coefficient de variation", "n"))
+```
+
+Avec un changement de lentille (5 fois plus sensible) du colorimètre, nous pouvons espérer doser avec 8 % d'erreur des concentrations de l'ordre de 0.2 µmol/L.
+
+# NOx
+
+```{r}
+aa3_plot("NOx_conc", data = inorga)
+
+#unique(inorga$sample_type)
+#cols<-RColorBrewer::brewer.pal(n=7,name="Set1")
+#plot(data = inorga, NOx_conc ~ date_time, type =c("p"), col = cols[inorga$sample_type]) +
+#  lines(data = inorga, NOx_conc ~ date_time)
+#identify(inorga$date_time, inorga$NOx_conc)
+```
+
+En retirant le premier point des dosages à 1µmol/L on obtient le tableau suivant :
+
+```{r}
+inorga %>.%
+  slice(., - 40) %>.%
+  filter(., sample_type %in% c( "SAMP") & sample_id != "mesoA" & sample_id != "mesoB") %>.%
+  mutate(., sample_id = factor(sample_id, levels = c("cal1", "cal5", "cal10", "cal15", 
+                                                     "cal20", "cal25", "cal30"))) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(NOx_conc), sd = sd(NOx_conc), cv = sd(NOx_conc)/mean(NOx_conc), n = n()) %>.%
+  kable(., col.names = c("Echantillons", "Moyenne", "Ecart-type", "Coefficient de variation", "n"))
+```
+
+Avec un changement de lentille (5 fois plus sensible) du colorimètre, nous pouvons espérer doser avec 2 % d'erreur des concentrations de l'ordre de 0.2 µmol/L.
+
+# NH4
+
+```{r}
+chart(inorga, NH4_conc ~ date_time %group=% 1 %col=% sample_type) +
+  geom_line() +
+  geom_point()
+```
+
+
+```{r}
+inorga %>.%
+  filter(., sample_type %in% c("SAMP") & sample_id != "mesoA" & sample_id != "mesoB") %>.%
+  mutate(., sample_id = factor(sample_id, levels = c("cal1", "cal5", "cal10", "cal15", 
+                                                     "cal20", "cal25", "cal30"))) %>.%
+  group_by(., sample_id) %>.%
+  summarise(., mean = mean(NH4_conc), sd = sd(NH4_conc), cv = sd(NH4_conc)/mean(NH4_conc), n = n()) %>.%
+  kable(., col.names = c("Echantillons", "Moyenne", "Ecart-type", "Coefficient de variation", "n"))
+```
+
+Avec un changement de lentille (5 fois plus sensible) du colorimètre, nous pouvons espérer doser avec 6 % d'erreur des concentrations de l'ordre de 1 µmol/L.
