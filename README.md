@@ -18,7 +18,9 @@ Une partie des fonctions après avoir été mise au point sont placées dans le 
 
 ## Nouvelles - News
 
-Retouvez dans le fichier NEWS.md les dernières nouvautés 
+Nos dernières avancées sur la mise au point de l'instrument ont mis en avant qu'une la précision de nos mesures entre 0 et 1 $\mu mol/L$ est insuffisantes pour doser finement les concentrations présentes dans nos mésocosmes.
+
+Une demande de prix est en cours afin de réaliser une mise à jour de notre instrument.
 
 ## English version
 
